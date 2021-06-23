@@ -43,6 +43,9 @@ from Autodesk.DesignScript.Geometry import Curve as DSCurve
 # -----------------------Импоорт библиотек----------------------
 
 
+wall_type_names_to_exclude = IN[5] # noqa
+
+
 # -----------------------Функции----------------------
 def wall_by_id_work(_id, _doc, _face):
 	"""Choosing wall destiny by ID."""
@@ -51,9 +54,7 @@ def wall_by_id_work(_id, _doc, _face):
 	if b_element.GetType().Name == "Wall":
 		wall_type = _doc.GetElement(b_element.GetTypeId())
 		type_name = wall_type.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString()
-		if type_name == "Ограждение МХМТС":
-			pass
-		elif "(автомойка)" in type_name:
+		if type_name in wall_type_names_to_exclude:
 			pass
 		elif wall_type.Kind == WallKind.Curtain:
 			curtain_list.append(b_element)
