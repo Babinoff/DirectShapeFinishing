@@ -45,7 +45,7 @@ from Autodesk.DesignScript.Geometry import Curve as DSCurve
 
 # -----------------------Функции----------------------
 def wall_by_id_work(_id, _doc, _face):
-	"""Super function."""
+	"""Choosing wall destiny by ID."""
 	full_id_list.append(_id)
 	b_element = _doc.GetElement(_id)
 	if b_element.GetType().Name == "Wall":
@@ -123,7 +123,8 @@ def get_wall_cut(fi, wall, _face):
 		geom = BoundingBox.ToCuboid(fi.get_BoundingBox(doc.ActiveView).ToProtoType())
 		return geom
 
-def GetWallProfil(insert_wall,host_wall,_face):	
+
+def GetWallProfil(insert_wall,host_wall,_face):
 	#uw_geom = Element.Geometry(u_wall.ToDSType(True)) #ToDSType не работает без clr.ImportExtensions(Revit.Elements)
 	g_curve_list = GetW_P_curve(insert_wall)
 	if g_curve_list != None:
@@ -191,13 +192,13 @@ def Create_Material(mat_name):
 		mat = Material.Create(doc,mat_name)
 		doc.GetElement(mat).Color = Autodesk.Revit.DB.Color(Byte.Parse(str(randint(0, 255))), Byte.Parse(str(randint(0, 255))), Byte.Parse(str(randint(0, 255))))
 
-#-----------------------АПИ параметры----------------------
+# -----------------------АПИ параметры----------------------
 doc = DocumentManager.Instance.CurrentDBDocument
-link_doc = UnwrapElement(IN[1])
-custom_hight = IN[3]
-#uiapp = DocumentManager.Instance.CurrentUIApplication
-#app = uiapp.Application
-#version = app.VersionNumber
+link_doc = UnwrapElement(IN[1]) # noqa
+custom_hight = IN[3] # noqa
+# uiapp = DocumentManager.Instance.CurrentUIApplication
+# app = uiapp.Application
+# version = app.VersionNumber
 options = SpatialElementBoundaryOptions()
 options.StoreFreeBoundaryFaces = True 
 options.SpatialElementBoundaryLocation = SpatialElementBoundaryLocation.Finish
