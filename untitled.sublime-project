@@ -1,0 +1,25 @@
+{
+	"folders":
+	[
+		{
+			"path": "."
+		}
+	],
+	    "settings": {
+        "flake8lint": {
+            "python_interpreter": "auto",
+            "builtins": [],
+            "pyflakes": true,
+            "pep8": true,
+            "pydocstyle": true,
+            "naming": true,
+            "import-order": false,
+            "import-order-style": "google",
+            "complexity": -1,
+            "pep8_max_line_length": 79,
+            "select": [],
+            "ignore": ["D100", "E402", "F401", "I100", "E501", "W191"],
+            "ignore_files": []
+        }
+    }
+}

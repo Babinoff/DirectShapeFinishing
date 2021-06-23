@@ -1,63 +1,64 @@
 # -*- coding: utf-8 -*-
 
 #  -----------------------Импоорт библиотек----------------------
-import clr
-from clr import StrongBox
-
 import sys
 sys.path.append("C:\\Program Files (x86)\\IronPython 2.7\\Lib")
+
 import random
 from random import randint
 
+import clr
+from clr import StrongBox
+
 import System
-from System import Type, Byte
+from System import Byte, Type
 clr.AddReference('System')
 from System.Collections.Generic import List
 
 clr.AddReference('RevitAPI')
 import Autodesk
-from Autodesk.Revit.DB import SpatialElement, SpatialElementBoundaryOptions, SpatialElementBoundaryLocation, SpatialElementGeometryCalculator, SpatialElementBoundarySubface, SolidOptions
-from Autodesk.Revit.DB import Transform, XYZ, SubfaceType, WallKind, SetComparisonResult, CurveLoop, GeometryCreationUtilities, BuiltInParameter, Line, Curve, ElementId, Material, Color
+from Autodesk.Revit.DB import SpatialElement, SpatialElementBoundaryLocation, SpatialElementBoundaryOptions, SpatialElementBoundarySubface, SpatialElementGeometryCalculator
+from Autodesk.Revit.DB import BuiltInParameter, Color, ElementId, Material, SetComparisonResult, WallKind
+from Autodesk.Revit.DB import Curve, CurveLoop, GeometryCreationUtilities, Line, SolidOptions, SubfaceType, Transform, XYZ
 clr.AddReference('RevitAPIIFC')
 from Autodesk.Revit.DB.IFC import ExporterIFCUtils
 
-clr.AddReference("RevitNodes") 
+clr.AddReference("RevitNodes")
 import Revit
-clr.ImportExtensions(Revit.Elements) #ToDSType не работает без
+clr.ImportExtensions(Revit.Elements)  # ToDSType не работает00 без
 clr.ImportExtensions(Revit.GeometryConversion)
-#from Revit.Elements import Element
+# from Revit.Elements import Elements
 
 
 clr.AddReference("RevitServices")
 import RevitServices
 from RevitServices.Persistence import DocumentManager
 
-#clr.AddReference('ProtoGeometry')
-#from Autodesk.DesignScript.Geometry import *
+# clr.AddReference('ProtoGeometry')
+# from Autodesk.DesignScript.Geometry import *
 
 clr.AddReference('ProtoGeometry')
-from Autodesk.DesignScript.Geometry import Surface,BoundingBox
+from Autodesk.DesignScript.Geometry import BoundingBox, Surface
 from Autodesk.DesignScript.Geometry import Curve as DSCurve
+# -----------------------Импоорт библиотек----------------------
 
-#-----------------------Импоорт библиотек----------------------
 
-#-----------------------Функции----------------------		
-def __wall_by_id_work__ (_id,_doc,_face):
+# -----------------------Функции----------------------
+def wall_by_id_work(_id, _doc, _face):
+	"""Super function."""
 	full_id_list.append(_id)
 	b_element = _doc.GetElement(_id)
-	#test3.append([b_element,b_element.GetType().Name])
-	if b_element.GetType().Name == "Wall":	
-		wallType = _doc.GetElement(b_element.GetTypeId())
-		type_name = wallType.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString()
-		if type_name == "Ограждение МХМТС": 
+	if b_element.GetType().Name == "Wall":
+		wall_type = _doc.GetElement(b_element.GetTypeId())
+		type_name = wall_type.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString()
+		if type_name == "Ограждение МХМТС":
 			pass
 		elif "(автомойка)" in type_name:
 			pass
-		elif wallType.Kind == WallKind.Curtain:
+		elif wall_type.Kind == WallKind.Curtain:
 			curtain_list.append(b_element)
 		else:
-			#blist.append(b_element)
-			inserts_list = b_element.FindInserts(incopenings,incshadows,incwalls,incshared)
+			inserts_list = b_element.FindInserts(incopenings, incshadows, incwalls, incshared)
 			if not inserts_list:
 				pass
 			else:
@@ -67,56 +68,57 @@ def __wall_by_id_work__ (_id,_doc,_face):
 					else:
 						item = _doc.GetElement(insert)
 						x = None
-						#x = item.GetType().Name
 						if item.GetType().Name == "FamilyInstance":
-							x = GetWallCut(item,b_element,_face)
+							x = get_wall_cut(item, b_element, _face)
 						elif item.GetType().Name == "Wall":
-							x = GetWallProfil(item,b_element,_face)
+							x = GetWallProfil(item, b_element, _face)
 						else:
 							x = BoundingBox.ToCuboid(item.get_BoundingBox(doc.ActiveView).ToProtoType())
 						inserts_by_wall.append(x)
 	else:
 		pass
-	
-def is_not_curtain(_id,_doc):
+
+
+def is_not_curtain(_id, _doc):
+	"""Wall is curtain test."""
 	wall = _doc.GetElement(_id)
-	#wallType = wall.WallType#doc.GetElement(wall.GetTypeId())
-	if wall.GetType().Name == "Wall": 
-		if wall.WallType.Kind == WallKind.Curtain:	
+	if wall.GetType().Name == "Wall":
+		if wall.WallType.Kind == WallKind.Curtain:
 			return False
 		else:
 			return True
 	else:
 		return True
-	
-def GetWallCut(fi,wall,_face):
+
+
+def get_wall_cut(fi, wall, _face):
+	"""Get wall cunt."""
 	doc = fi.Document
-	cutDir = StrongBox[XYZ](wall.Orientation)
+	current_dir = StrongBox[XYZ](wall.Orientation)
 	try:
-		curveLoop1 = ExporterIFCUtils.GetInstanceCutoutFromWall(doc, wall, fi, cutDir)
+		curve_loop1 = ExporterIFCUtils.GetInstanceCutoutFromWall(doc, wall, fi, current_dir)
 		multpl = wall.Width
 		w_vector = wall.Orientation
 		f_vector = fi.FacingOrientation
-		for c in curveLoop1:
+		for c in curve_loop1:
 			test_curv = c
 		if _face.Intersect(test_curv) == SetComparisonResult.Subset:
 			move = Transform.CreateTranslation(w_vector.Multiply(multpl))
 			extr_vector = -w_vector
 		else:
 			if w_vector.IsAlmostEqualTo(f_vector):
-				move = Transform.CreateTranslation(XYZ(0,0,0))
+				move = Transform.CreateTranslation(XYZ(0, 0, 0))
 				extr_vector = w_vector
 			else:
-				move = Transform.CreateTranslation(XYZ(0,0,0))
+				move = Transform.CreateTranslation(XYZ(0, 0, 0))
 				extr_vector = f_vector
-		curv_move = [cl.CreateTransformed(move) for cl in curveLoop1]
-		curveLoop2 = CurveLoop()
+		curv_move = [cl.CreateTransformed(move) for cl in curve_loop1]
+		curve_loop2 = CurveLoop()
 		for cm in curv_move:
-			curveLoop2.Append(cm)
-		icurveLoop = List[CurveLoop]([curveLoop2])
-		geom = GeometryCreationUtilities.CreateExtrusionGeometry(icurveLoop,extr_vector,wall.Width*2).ToProtoType()
-		#loops = [i.ToProtoType() for i in curveLoop1] # - профиль сгенерированый Експортером
-		return geom#[loops,geom]
+			curve_loop2.Append(cm)
+		icurve_loop = List[CurveLoop]([curve_loop2])
+		geom = GeometryCreationUtilities.CreateExtrusionGeometry(icurve_loop, extr_vector, wall.Width * 2).ToProtoType()
+		return geom
 	except:
 		geom = BoundingBox.ToCuboid(fi.get_BoundingBox(doc.ActiveView).ToProtoType())
 		return geom
