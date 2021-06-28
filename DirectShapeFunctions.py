@@ -45,7 +45,7 @@ incopenings, incshadows, incwalls, incshared = True, False, True, True
 
 
 # -----------------------Функции----------------------
-def main_wall_by_id_work(self, face_host_id, doc, face, wall_type_names_to_exclude):
+def main_wall_by_id_work(face_host_id, doc, face, wall_type_names_to_exclude):
 	"""Choosing wall destiny by ID."""
 	global curtain_list
 	global full_id_list
@@ -188,3 +188,25 @@ def create_material(mat_name):
 	if Material.IsNameUnique(doc, mat_name):
 		mat = Material.Create(doc, mat_name)
 		doc.GetElement(mat).Color = Autodesk.Revit.DB.Color(Byte.Parse(str(randint(0, 255))), Byte.Parse(str(randint(0, 255))), Byte.Parse(str(randint(0, 255))))
+
+
+def get_type_if_null_id(doc, boundary, room, boundarylist, index)
+	global ds_type
+	try:
+		ds_type = get_wall_type_material(doc, boundary, room)
+	except:
+		pass
+	if i + 1 < len(boundarylist):
+		try:
+			ds_type = get_wall_type_material(doc, doc.GetElement(boundarylist[i + 1].ElementId), room)
+		except:
+			pass
+	elif i - 1 >= 0:
+		try:
+			ds_type = get_wall_type_material(doc, doc.GetElement(boundarylist[i - 1].ElementId), room)
+		except:
+			pass
+
+
+def get_wall_type_name(doc, b_element1)
+	return doc.GetElement(b_element1.GetTypeId()).get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString()

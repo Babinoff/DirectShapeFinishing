@@ -3,6 +3,14 @@
 	{
 		"selected_items":
 		[
+			[
+				"Di",
+				"DirectShapeFunctions\tmodule"
+			],
+			[
+				"wal",
+				"wall_by_id_work"
+			]
 		]
 	},
 	"buffers":
@@ -11,16 +19,28 @@
 			"file": "DirectShapeFinishing.py",
 			"settings":
 			{
-				"buffer_size": 16685,
+				"buffer_size": 10804,
 				"encoding": "UTF-8",
 				"line_ending": "Windows"
-			}
+			},
+			"undo_stack":
+			[
+			]
 		},
 		{
 			"file": "untitled.sublime-project",
 			"settings":
 			{
-				"buffer_size": 523,
+				"buffer_size": 569,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "DirectShapeFunctions.py",
+			"settings":
+			{
+				"buffer_size": 6892,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -78,10 +98,12 @@
 	],
 	"file_history":
 	[
+		"/home/ward/git/DirectShapeFinishing/untitled.sublime-project",
 		"/home/ward/.config/sublime-text-3/Packages/Python Flake8 Lint/Flake8Lint.sublime-settings",
+		"/home/ward/.config/sublime-text-3/Packages/Jedi - Python autocompletion/sublime_jedi.sublime-settings",
+		"/home/ward/.config/sublime-text-3/Packages/Jedi - Python autocompletion/Default.sublime-keymap",
 		"/home/ward/git/DirectShapeFinishing/DirectShapeFunctions.py",
 		"/home/ward/.config/sublime-text-3/Packages/User/Flake8Lint.sublime-settings",
-		"/home/ward/git/DirectShapeFinishing/untitled.sublime-project",
 		"/home/ward/.config/sublime-text-3/Packages/User/Preferences.sublime-settings",
 		"/home/ward/.config/sublime-text-3/Packages/Default/Preferences.sublime-settings",
 		"/home/ward/git/openeir/EIR FAQ.md",
@@ -105,56 +127,132 @@
 	},
 	"find_state":
 	{
-		"case_sensitive": false,
+		"case_sensitive": true,
 		"find_history":
 		[
+			"IN",
+			"wall_hight",
+			"IN",
+			"DSCurve",
+			"b_element",
+			"host_id",
+			"results",
+			"roomSolid",
+			"full_id_list",
+			"main_wall_by_id_work",
+			"trnsf",
+			"main_wall_by_id_work",
+			"current_dir",
+			"ExporterIFCUtils",
+			"incopenings",
+			"DSCurve",
+			"main_wall_by_id_work",
+			"get_wall_type_material_and_select_material_for_dsis_not_curtain",
+			"DSCurve",
+			"room",
+			"inserts_by_wall",
+			"!=",
+			"Create_Material",
+			"Get_walltype_ctruct_mat_name",
+			"GetW_P_curve",
+			"GetWallProfil",
+			"icurveLoop",
+			"curveLoop2",
+			"curveLoop1",
+			"cutDir",
+			"GetWallCut",
+			"wallType",
+			"walltype",
+			"wallType"
 		],
-		"highlight": true,
+		"highlight": false,
 		"in_selection": false,
 		"preserve_case": false,
 		"regex": false,
 		"replace_history":
 		[
+			"face_host_id",
+			"get_wall_type_material",
+			"is not",
+			"create_material",
+			"get_wall_type_material_and_select_material_for_ds",
+			"get_wall_p_curve",
+			"get_wall_profil",
+			"get_wall_cut",
+			"wall_type"
 		],
 		"reverse": false,
+		"scrollbar_highlights": true,
 		"show_context": true,
 		"use_buffer2": true,
+		"use_gitignore": true,
 		"whole_word": false,
-		"wrap": true
+		"wrap": false
 	},
 	"groups":
 	[
 		{
-			"selected": 1,
 			"sheets":
 			[
 				{
 					"buffer": 0,
 					"file": "DirectShapeFinishing.py",
+					"selected": true,
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 16685,
+						"buffer_size": 10804,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								290,
-								290
+								2908,
+								2910
+							],
+							[
+								2947,
+								2949
+							],
+							[
+								3067,
+								3069
+							],
+							[
+								3099,
+								3101
+							],
+							[
+								3127,
+								3129
+							],
+							[
+								3169,
+								3171
+							],
+							[
+								3461,
+								3463
+							],
+							[
+								7784,
+								7786
 							]
 						],
 						"settings":
 						{
+							"show_definitions": false,
 							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 2,
 							"translate_tabs_to_spaces": false
 						},
 						"translation.x": 0.0,
-						"translation.y": 0.0,
+						"translation.y": 3385.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 1,
+					"stack_index": 0,
+					"stack_multiselect": false,
 					"type": "text"
 				},
 				{
@@ -163,19 +261,20 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 523,
+						"buffer_size": 569,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								446,
-								446
+								503,
+								503
 							]
 						],
 						"settings":
 						{
+							"show_definitions": true,
 							"syntax": "Packages/JavaScript/JSON.sublime-syntax",
 							"tab_size": 4,
 							"translate_tabs_to_spaces": true
@@ -184,7 +283,46 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
+					"stack_index": 1,
+					"stack_multiselect": false,
+					"type": "text"
+				}
+			]
+		},
+		{
+			"sheets":
+			[
+				{
+					"buffer": 2,
+					"file": "DirectShapeFunctions.py",
+					"selected": true,
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 6892,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								5786,
+								5786
+							]
+						],
+						"settings":
+						{
+							"show_definitions": false,
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 587.0,
+						"zoom_level": 1.0
+					},
 					"stack_index": 0,
+					"stack_multiselect": false,
 					"type": "text"
 				}
 			]
@@ -192,7 +330,7 @@
 	],
 	"incremental_find":
 	{
-		"height": 0.0
+		"height": 29.0
 	},
 	"input":
 	{
@@ -207,11 +345,18 @@
 				0,
 				1,
 				1
+			],
+			[
+				1,
+				0,
+				2,
+				1
 			]
 		],
 		"cols":
 		[
 			0.0,
+			0.629201765541,
 			1.0
 		],
 		"rows":
@@ -237,7 +382,7 @@
 	"project": "untitled.sublime-project",
 	"replace":
 	{
-		"height": 0.0
+		"height": 54.0
 	},
 	"save_all_on_build": true,
 	"select_file":
@@ -275,7 +420,7 @@
 	"show_open_files": false,
 	"show_tabs": true,
 	"side_bar_visible": true,
-	"side_bar_width": 340.0,
+	"side_bar_width": 50.0,
 	"status_bar_visible": true,
 	"template_settings":
 	{

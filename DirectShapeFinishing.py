@@ -27,21 +27,16 @@ clr.AddReference("RevitNodes")
 import Revit
 clr.ImportExtensions(Revit.Elements)  # ToDSType не работает00 без
 clr.ImportExtensions(Revit.GeometryConversion)
-# from Revit.Elements import Elements
-
 
 clr.AddReference("RevitServices")
 import RevitServices
 from RevitServices.Persistence import DocumentManager
 
-# clr.AddReference('ProtoGeometry')
-# from Autodesk.DesignScript.Geometry import *
-
 clr.AddReference('ProtoGeometry')
 from Autodesk.DesignScript.Geometry import BoundingBox, Surface
 from Autodesk.DesignScript.Geometry import Curve as DSCurve
 
-from .DirectShapeFunctions import get_wall_cut, get_wall_p_curve, get_wall_profil, get_wall_type_material
+from .DirectShapeFunctions import get_wall_cut, get_wall_p_curve, get_wall_profil, get_wall_ds_type_material, get_wall_type_name, get_type_if_null_id
 from .DirectShapeFunctions import create_material, is_not_curtain, main_wall_by_id_work
 # -----------------------Импоорт библиотек----------------------
 
@@ -58,7 +53,7 @@ class RoomFinishing():
 	inserts_by_wall = []
 	boundary_surf = []
 	boundary_curvs = []
-	boundary_type = []
+	boundary_ds_type = []
 	boundary_level = []
 
 	def __init__(self, doc, link_doc, room):
@@ -84,12 +79,14 @@ s_options = SolidOptions(ElementId(-1), ElementId(-1))
 
 
 # -----------------------Рабочие параметры----------------------
-wall_type_names_to_exclude = IN[6] # noqa
-link_doc = UnwrapElement(IN[1]) # noqa
-size_param = 1000
-# incopenings, incshadows, incwalls, incshared = True, False, True, True
+
 rooms = UnwrapElement(IN[0]) # noqa
+link_doc = UnwrapElement(IN[1]) # noqa
+room_height_enable = IN[2] # noqa
 custom_hight = IN[3] # noqa
+transform_Z_enable = IN[4] # noqa
+move_z_value = IN[5] # noqa
+wall_type_names_to_exclude = IN[6] # noqa
 surf_by_room = []
 element_by_room = []
 full_id_list = []
@@ -100,13 +97,13 @@ surface_list_all = []
 surf_from_bound_curvs = []
 boundarylist = []
 blist = []
-x = 0
-test3 = []
-boundary_type_by_room = []
+# x = 0
+# test3 = []
+boundary_ds_type_by_room = []
 boundary_by_room_level = []
 
 # move_z = IN[5]*0.00328084 # noqa
-move_z = UnitUtils.ConvertToInternalUnits(IN[5], DisplayUnitType.DUT_MILLIMETERS) # noqa
+move_z = UnitUtils.ConvertToInternalUnits(move_z_value, DisplayUnitType.DUT_MILLIMETERS) # noqa
 transform_Z = Transform.CreateTranslation(XYZ(0, 0, move_z))
 
 # @@@-----------------------Room params----------------------
@@ -115,78 +112,42 @@ for room in rooms:
 	room_volume = room.get_Parameter(BuiltInParameter.ROOM_VOLUME).AsDouble()
 	room_height = room_volume / room_area * 304.8
 	room_level = doc.GetElement(room.get_Parameter(BuiltInParameter.ROOM_LEVEL_ID).AsElementId())
+	sp_geom_results = calculator.CalculateSpatialElementGeometry(room)
+	roomSolid = sp_geom_results.GetGeometry()
 
 	r_f = RoomFinishing(doc, link_doc, room)
-	# separator_list = []
-	# by_face_list = []
-	# inserts = []
-	# curve_from_boundary_list = []
-	# elem_list = []
-	results = calculator.CalculateSpatialElementGeometry(room)
-	# roomSolid = results.GetGeometry()
-	# inserts_by_wall = []
-	# boundary_surf = []
-	# boundary_curvs = []
-	# boundary_type = []
-	# boundary_level = []
 
 # @@@-----------------------Боундари Элементс----------------------
 	for boundarylist in room.GetBoundarySegments(options):
 		b_s = []
 		b_element1 = None
 		b_element2 = None
-		for i, boundary in enumerate(boundarylist):
+		ds_type = "BASE_finishing"
+		for index, boundary in enumerate(boundarylist):
 			crv = None
 			wall_hight = room_height
 			if str(boundary.ElementId) == "-1" and str(boundary.LinkElementId) == "-1":
-				pass
-				# crv = boundary.GetCurve()
-				# try:
-				# 	type = get_wall_type_material_and_select_material_for_ds(doc, boundary, room)
-				# except:
-				# 	type = "АБН_Отделка стен"
-				# if i + 1 < len(boundarylist):
-				# 	try:
-				# 		type = get_wall_type_material_and_select_material_for_ds(doc, doc.GetElement(boundarylist[i + 1].ElementId), room)
-				# 	except:
-				# 		type = "АБН_Отделка стен"
-				# 		"""
-				# 		try:
-				# 			type = get_wall_type_material_and_select_material_for_ds(doc,doc.GetElement(boundarylist[i-1].ElementId),room)
-				# 		except:
-				# 			type = "АБН_Отделка стен"
-				# 		"""
-				# elif i - 1 >= 0:
-				# 	try:
-				# 		type = get_wall_type_material_and_select_material_for_ds(doc, doc.GetElement(boundarylist[i - 1].ElementId), room)
-				# 	except:
-				# 		type = "АБН_Отделка стен"
-				# 		"""try:
-				# 			type = get_wall_type_material_and_select_material_for_ds(doc,doc.GetElement(boundarylist[i+1].ElementId),room)
-				# 		except:
-				# 		type = "where is my type dude2"""
-				# else:
-				# 	type = "where is my type dude3"
+				get_type_if_null_id(doc, boundary, room, boundarylist, index)
 			elif str(boundary.ElementId) is not "-1":
 				b_element1 = doc.GetElement(boundary.ElementId)
 				if b_element1.GetType().Name == "ModelLine":
-					r_f.separator_list.append(boundary.GetCurve())  # !!!!!!!!!!!!!!!!boundary.GetCurve() вместо поиска геометрии у элементов!!!!!!!!!!
+					r_f.separator_list.append(boundary.GetCurve())
 				elif b_element1.GetType().Name == "Wall" and b_element1.WallType.Kind == WallKind.Curtain:
 					r_f.separator_list.append(boundary.GetCurve())
 # ---------------Убираем тип стены из расчёта -----------------------------------------------------------------------------------
-				elif b_element1.GetType().Name == "Wall" and doc.GetElement(b_element1.GetTypeId()).get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString() == "Ограждение МХМТС":
+				elif b_element1.GetType().Name == "Wall" and get_wall_type_name(doc, b_element1) in wall_type_names_to_exclude:
 					pass
 # -------------------------------------------------------------------------------------------------------------------------------------------
 				elif b_element1.GetType().Name == "Wall":
 					wall_box = b_element1.get_BoundingBox(doc.ActiveView)
 					wall_hight = (wall_box.Max.Z - wall_box.Min.Z) * 304.8
-					type = get_wall_type_material(doc, b_element1, room)
+					ds_type = get_wall_ds_type_material(doc, b_element1, room)
 					crv = boundary.GetCurve()
 				else:
 					try:
-						type = get_wall_type_material(doc, b_element1, room)
+						ds_type = get_wall_ds_type_material(doc, b_element1, room)
 					except:
-						type = "АБН_Отделка стен"
+						ds_type = "АБН_Отделка стен"
 					crv = boundary.GetCurve()
 			elif str(boundary.LinkElementId) is not "-1":
 				b_element2 = link_doc.GetElement(boundary.LinkElementId)
@@ -196,26 +157,26 @@ for room in rooms:
 					r_f.separator_list.append(boundary.GetCurve())
 			r_f.boundary_level.append(room_level)
 # ------------------------------------------------------Включаем расчет по высоте стен--------------------------------------------------
-			if crv is not None and IN[4]: # noqa
+			if crv is not None and transform_Z_enable: # noqa
 				crv = crv.CreateTransformed(transform_Z).ToProtoType()
 			elif crv is not None:
 				crv = crv.ToProtoType()
-			if IN[2]: # noqa
+			if room_height_enable: # noqa
 				if crv is not None:
 					if wall_hight > room_height:
 						r_f.boundary_surf.append(DSCurve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), room_height))
 					else:
 						r_f.boundary_surf.append(DSCurve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), wall_hight))
-					r_f.boundary_type.append(type)
+					r_f.boundary_ds_type.append(ds_type)
 			else:
 				if crv is not None:
 					r_f.boundary_surf.append(DSCurve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), custom_hight))
-					r_f.boundary_type.append(type)
+					r_f.boundary_ds_type.append(ds_type)
 
 # @@@-----------------------Боундари Фэйс----------------------
-	for face in results.GetGeometry().Faces:
+	for face in sp_geom_results.GetGeometry().Faces:
 		inserts_by_wall = []
-		for bface in results.GetBoundaryFaceInfo(face):
+		for bface in sp_geom_results.GetBoundaryFaceInfo(face):
 			inserts_by_wall = []
 			test_list = []
 			test_list2 = []
@@ -229,7 +190,7 @@ for room in rooms:
 				if str(host_id) is not "-1" and is_not_curtain(host_id, doc):
 					r_f.by_face_list.append(face)  # -------------Cобираем плоскость
 					by_face_h = face
-					main_wall_by_id_work(host_id, doc, by_face_h)
+					main_wall_by_id_work(host_id, doc, by_face_h, wall_type_names_to_exclude)
 					r_f.inserts.extend(inserts_by_wall)
 				else:
 					link_id = bface.SpatialBoundaryElement.LinkedElementId
@@ -275,7 +236,7 @@ for room in rooms:
 					pass
 		surface_in_room.append(new_bs)
 	surface_list_all.append(surface_in_room)
-	boundary_type_by_room.append(r_f.boundary_type)
+	boundary_ds_type_by_room.append(r_f.boundary_ds_type)
 	boundary_by_room_level.append(r_f.boundary_level)
 
-OUT = surface_list_all, boundary_type_by_room, boundary_by_room_level, r_f.separator_list
+OUT = surface_list_all, boundary_ds_type_by_room, boundary_by_room_level, r_f.separator_list
