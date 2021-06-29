@@ -34,10 +34,11 @@ from RevitServices.Persistence import DocumentManager
 
 clr.AddReference('ProtoGeometry')
 from Autodesk.DesignScript.Geometry import BoundingBox, Surface
-from Autodesk.DesignScript.Geometry import Curve as DSCurve
+from Autodesk.DesignScript.Geometry import Curve as DesignScript_Curve
 
 from .DirectShapeFunctions import get_wall_cut, get_wall_p_curve, get_wall_profil, get_wall_ds_type_material, get_wall_type_name, get_type_if_null_id
 from .DirectShapeFunctions import create_material, is_not_curtain, main_wall_by_id_work
+from .DirectShapeFunctions import boundary_filter
 # -----------------------Импоорт библиотек----------------------
 
 
@@ -122,7 +123,7 @@ for room in rooms:
 		b_s = []
 		b_element1 = None
 		b_element2 = None
-		ds_type = "BASE_finishing"
+		ds_type = "Finishing_BASE"
 		for index, boundary in enumerate(boundarylist):
 			crv = None
 			wall_hight = room_height
@@ -130,33 +131,12 @@ for room in rooms:
 				get_type_if_null_id(doc, boundary, room, boundarylist, index)
 			elif str(boundary.ElementId) is not "-1":
 				b_element1 = doc.GetElement(boundary.ElementId)
-				if b_element1.GetType().Name == "ModelLine":
-					r_f.separator_list.append(boundary.GetCurve())
-				elif b_element1.GetType().Name == "Wall" and b_element1.WallType.Kind == WallKind.Curtain:
-					r_f.separator_list.append(boundary.GetCurve())
-# ---------------Убираем тип стены из расчёта -----------------------------------------------------------------------------------
-				elif b_element1.GetType().Name == "Wall" and get_wall_type_name(doc, b_element1) in wall_type_names_to_exclude:
-					pass
-# -------------------------------------------------------------------------------------------------------------------------------------------
-				elif b_element1.GetType().Name == "Wall":
-					wall_box = b_element1.get_BoundingBox(doc.ActiveView)
-					wall_hight = (wall_box.Max.Z - wall_box.Min.Z) * 304.8
-					ds_type = get_wall_ds_type_material(doc, b_element1, room)
-					crv = boundary.GetCurve()
-				else:
-					try:
-						ds_type = get_wall_ds_type_material(doc, b_element1, room)
-					except:
-						ds_type = "АБН_Отделка стен"
-					crv = boundary.GetCurve()
+				boundary_filter(b_element1, boundary, room)
 			elif str(boundary.LinkElementId) is not "-1":
 				b_element2 = link_doc.GetElement(boundary.LinkElementId)
-				if b_element2.GetType().Name == "ModelLine":
-					r_f.separator_list.append(boundary.GetCurve())
-				elif b_element2.GetType().Name == "Wall" and b_element2.WallType.Kind == WallKind.Curtain:
-					r_f.separator_list.append(boundary.GetCurve())
+				boundary_filter(b_element2, boundary, room)
 			r_f.boundary_level.append(room_level)
-# ------------------------------------------------------Включаем расчет по высоте стен--------------------------------------------------
+# ----------------Включаем расчет по высоте стен--------------------------------------------------
 			if crv is not None and transform_Z_enable: # noqa
 				crv = crv.CreateTransformed(transform_Z).ToProtoType()
 			elif crv is not None:
@@ -164,13 +144,13 @@ for room in rooms:
 			if room_height_enable: # noqa
 				if crv is not None:
 					if wall_hight > room_height:
-						r_f.boundary_surf.append(DSCurve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), room_height))
+						r_f.boundary_surf.append(DesignScript_Curve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), room_height))
 					else:
-						r_f.boundary_surf.append(DSCurve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), wall_hight))
+						r_f.boundary_surf.append(DesignScript_Curve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), wall_hight))
 					r_f.boundary_ds_type.append(ds_type)
 			else:
 				if crv is not None:
-					r_f.boundary_surf.append(DSCurve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), custom_hight))
+					r_f.boundary_surf.append(DesignScript_Curve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), custom_hight))
 					r_f.boundary_ds_type.append(ds_type)
 
 # @@@-----------------------Боундари Фэйс----------------------

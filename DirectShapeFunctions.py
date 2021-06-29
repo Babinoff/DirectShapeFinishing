@@ -165,21 +165,22 @@ def get_wall_p_curve(u_wall):
 		return None
 
 
-def get_wall_type_material(doc, b_element, room, room_param_name="Имя"):
+def get_wall_ds_type_material(doc, b_element, room, concrete_mat_prfx="елезобетон", room_param_name="Имя"):
 	"""Select DS material by structurual material of wall type."""
-	room_func = room.LookupParameter(room_param_name).AsString()
+	# room_func = room.LookupParameter(room_param_name).AsString()
+	room_func = room.get_Parameter(BuiltInParameter.ROOM_NAME)
 	if b_element.GetType().Name is not "RevitLinkInstance":
 		mat_name = doc.GetElement(b_element.GetTypeId()).get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM).AsValueString()
-		if "елезобетон" in mat_name:
-			out = "АБН_Отделка стен железобетон ({})".format(room_func)
-			create_material(out)
+		if concrete_mat_prfx in mat_name:
+			ds_mat_name = "Finishing_CONCRETE ({})".format(room_func)
+			create_material(ds_mat_name)
 		else:
-			out = "АБН_Отделка стен кладка ({})".format(room_func)
-			create_material(out)
+			ds_mat_name = "Finishing_MASONRY ({})".format(room_func)
+			create_material(ds_mat_name)
 	else:
-		out = "АБН_Отделка стен кладка ({})".format(room_func)
-		create_material(out)
-	return out
+		ds_mat_name = "Finishing_MASONRY ({})".format(room_func)
+		create_material(ds_mat_name)
+	return ds_mat_name
 
 
 def create_material(mat_name):
@@ -190,23 +191,49 @@ def create_material(mat_name):
 		doc.GetElement(mat).Color = Autodesk.Revit.DB.Color(Byte.Parse(str(randint(0, 255))), Byte.Parse(str(randint(0, 255))), Byte.Parse(str(randint(0, 255))))
 
 
-def get_type_if_null_id(doc, boundary, room, boundarylist, index)
+def get_type_if_null_id(doc, boundary, room, boundarylist, index):
+	"""Try find nearest element to chose type."""
 	global ds_type
 	try:
 		ds_type = get_wall_type_material(doc, boundary, room)
 	except:
 		pass
-	if i + 1 < len(boundarylist):
+	if index + 1 < len(boundarylist):
 		try:
-			ds_type = get_wall_type_material(doc, doc.GetElement(boundarylist[i + 1].ElementId), room)
+			ds_type = get_wall_type_material(doc, doc.GetElement(boundarylist[index + 1].ElementId), room)
 		except:
 			pass
-	elif i - 1 >= 0:
+	elif index - 1 >= 0:
 		try:
-			ds_type = get_wall_type_material(doc, doc.GetElement(boundarylist[i - 1].ElementId), room)
+			ds_type = get_wall_type_material(doc, doc.GetElement(boundarylist[index - 1].ElementId), room)
 		except:
 			pass
 
 
-def get_wall_type_name(doc, b_element1)
-	return doc.GetElement(b_element1.GetTypeId()).get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString()
+def get_wall_type_name(doc, b_element):
+	"""Get symbol name."""
+	return doc.GetElement(b_element.GetTypeId()).get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString()
+
+
+def boundary_filter(b_element, boundary, room):
+	"""Find only correct walls."""
+	global r_f
+	global ds_type
+	global crv
+	global wall_hight
+	if b_element.GetType().Name == "ModelLine":
+		r_f.separator_list.append(boundary.GetCurve())
+	elif b_element.GetType().Name == "Wall" and b_element.WallType.Kind == WallKind.Curtain:
+		r_f.separator_list.append(boundary.GetCurve())
+# ---------------Убираем тип стены из расчёта ------------
+	elif b_element.GetType().Name == "Wall":
+		wall_box = b_element.get_BoundingBox(doc.ActiveView)
+		wall_hight = (wall_box.Max.Z - wall_box.Min.Z) * 304.8
+		ds_type = get_wall_ds_type_material(doc, b_element, room)
+		crv = boundary.GetCurve()
+	else:
+		try:
+			ds_type = get_wall_ds_type_material(doc, b_element, room)
+		except:
+			ds_type = "АБН_Отделка стен"
+		crv = boundary.GetCurve()
