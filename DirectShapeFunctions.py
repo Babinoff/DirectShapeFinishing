@@ -79,14 +79,13 @@ def main_wall_by_id_work(face_host_id, doc, face, wall_type_names_to_exclude):
 						inserts_by_wall.append(x)
 
 
-def is_not_curtain(_id, _doc):
+def is_not_curtain_modelline(_id, _doc):
 	"""Wall is curtain test."""
 	wall = _doc.GetElement(_id)
-	if wall.GetType().Name == "Wall":
-		if wall.WallType.Kind == WallKind.Curtain:
-			return False
-		else:
-			return True
+	if wall.GetType().Name == "Wall" and wall.WallType.Kind == WallKind.Curtain:
+		return False
+	elif wall.GetType().Name == "ModelLine":
+		return False
 	else:
 		return True
 
@@ -235,5 +234,5 @@ def boundary_filter(b_element, boundary, room):
 		try:
 			ds_type = get_wall_ds_type_material(doc, b_element, room)
 		except:
-			ds_type = "АБН_Отделка стен"
+			pass
 		crv = boundary.GetCurve()

@@ -37,7 +37,7 @@ from Autodesk.DesignScript.Geometry import BoundingBox, Surface
 from Autodesk.DesignScript.Geometry import Curve as DesignScript_Curve
 
 from .DirectShapeFunctions import get_wall_cut, get_wall_p_curve, get_wall_profil, get_wall_ds_type_material, get_wall_type_name, get_type_if_null_id
-from .DirectShapeFunctions import create_material, is_not_curtain, main_wall_by_id_work
+from .DirectShapeFunctions import create_material, is_not_curtain_modelline, main_wall_by_id_work
 from .DirectShapeFunctions import boundary_filter
 # -----------------------Импоорт библиотек----------------------
 
@@ -167,14 +167,14 @@ for room in rooms:
 				pass
 			else:
 				host_id = bface.SpatialBoundaryElement.HostElementId
-				if str(host_id) is not "-1" and is_not_curtain(host_id, doc):
+				if str(host_id) is not "-1" and is_not_curtain_modelline(host_id, doc):
 					r_f.by_face_list.append(face)  # -------------Cобираем плоскость
 					by_face_h = face
 					main_wall_by_id_work(host_id, doc, by_face_h, wall_type_names_to_exclude)
 					r_f.inserts.extend(inserts_by_wall)
 				else:
 					link_id = bface.SpatialBoundaryElement.LinkedElementId
-					if str(link_id) is not "-1" and is_not_curtain(link_id, link_doc):
+					if str(link_id) is not "-1" and is_not_curtain_modelline(link_id, link_doc):
 						r_f.by_face_list.append(face)  # ---------Cобираем плоскость
 						by_face_l = face
 						r_f.inserts.extend(inserts_by_wall)
@@ -196,10 +196,10 @@ for room in rooms:
 									test_list2.append(True)
 							if any(test_list2):
 								pass
-							elif bface.SubfaceArisesFromElementFace:  # ------Убираем плоскости витражей
+							elif bface.SubfaceArisesFromElementFace:  # <------Убираем плоскости витражей
 								pass
 							else:
-								r_f.by_face_list.append(face)  # ------Cобираем торцевые плоскости
+								r_f.by_face_list.append(face)  # <------Cобираем торцевые плоскости
 								by_face = face
 								r_f.inserts.extend(inserts_by_wall)
 	insertslist.append(r_f.inserts)
