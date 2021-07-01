@@ -12,6 +12,7 @@ import System
 from System import Byte, Type
 clr.AddReference('System')
 from System.Collections.Generic import List
+from System.Diagnostics import Process, Stopwatch
 
 clr.AddReference('RevitAPI')
 import Autodesk
@@ -42,6 +43,44 @@ from Autodesk.DesignScript.Geometry import Curve as DSCurve
 
 
 incopenings, incshadows, incwalls, incshared = True, False, True, True
+
+
+# -----------------------Класс для хранения информации
+class TimeCounter:
+	"""C# timer."""
+
+	def __init__(self, name="timer"):
+		"""Start timer."""
+		self.name = name
+		self.time = System.Diagnostics.Stopwatch.StartNew()
+		self.time.Start()
+
+	def stop(self):
+		"""Stop timer."""
+		self.time.Stop()
+		return self.time.Elapsed
+
+
+class RoomFinishing:
+	"""Main roomfinishing class for information collect."""
+
+	separator_list = []
+	by_face_list = []
+	inserts = []
+	curve_from_boundary_list = []
+	elem_list = []
+	inserts_by_wall = []
+	boundary_surf = []
+	boundary_curvs = []
+	boundary_ds_type = []
+	boundary_level = []
+
+	def __init__(self, doc, link_doc, room):
+		"""Main parameters for room finishing construction."""
+		self.doc = doc
+		self.link_doc = link_doc
+		self.room = room
+# -----------------------Класс для хранения информации
 
 
 # -----------------------Функции----------------------

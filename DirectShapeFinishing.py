@@ -39,30 +39,8 @@ from Autodesk.DesignScript.Geometry import Curve as DesignScript_Curve
 from .DirectShapeFunctions import get_wall_cut, get_wall_p_curve, get_wall_profil, get_wall_ds_type_material, get_wall_type_name, get_type_if_null_id
 from .DirectShapeFunctions import create_material, is_not_curtain_modelline, main_wall_by_id_work
 from .DirectShapeFunctions import boundary_filter
+from .DirectShapeFunctions import RoomFinishing, TimeCounter
 # -----------------------Импоорт библиотек----------------------
-
-
-# -----------------------Класс для хранения информации----------------------
-class RoomFinishing():
-	"""Main roomfinishing class for information collect."""
-
-	separator_list = []
-	by_face_list = []
-	inserts = []
-	curve_from_boundary_list = []
-	elem_list = []
-	inserts_by_wall = []
-	boundary_surf = []
-	boundary_curvs = []
-	boundary_ds_type = []
-	boundary_level = []
-
-	def __init__(self, doc, link_doc, room):
-		"""Main parameters for room finishing construction."""
-		self.doc = doc
-		self.link_doc = link_doc
-		self.room = room
-# -----------------------Класс для хранения информации----------------------
 
 
 # -----------------------АПИ параметры----------------------
@@ -108,6 +86,7 @@ move_z = UnitUtils.ConvertToInternalUnits(move_z_value, DisplayUnitType.DUT_MILL
 transform_Z = Transform.CreateTranslation(XYZ(0, 0, move_z))
 
 # @@@-----------------------Room params----------------------
+rooms_timer = TimeCounter()
 for room in rooms:
 	room_area = room.get_Parameter(BuiltInParameter.ROOM_AREA).AsDouble()
 	room_volume = room.get_Parameter(BuiltInParameter.ROOM_VOLUME).AsDouble()
@@ -115,9 +94,7 @@ for room in rooms:
 	room_level = doc.GetElement(room.get_Parameter(BuiltInParameter.ROOM_LEVEL_ID).AsElementId())
 	sp_geom_results = calculator.CalculateSpatialElementGeometry(room)
 	roomSolid = sp_geom_results.GetGeometry()
-
 	r_f = RoomFinishing(doc, link_doc, room)
-
 # @@@-----------------------Боундари Элементс----------------------
 	for boundarylist in room.GetBoundarySegments(options):
 		b_s = []
@@ -136,7 +113,7 @@ for room in rooms:
 				b_element2 = link_doc.GetElement(boundary.LinkElementId)
 				boundary_filter(b_element2, boundary, room)
 			r_f.boundary_level.append(room_level)
-# ----------------Включаем расчет по высоте стен--------------------------------------------------
+			# ----------------Включаем расчет по высоте стен--------------------------------------------------
 			if crv is not None and transform_Z_enable: # noqa
 				crv = crv.CreateTransformed(transform_Z).ToProtoType()
 			elif crv is not None:
@@ -152,7 +129,6 @@ for room in rooms:
 				if crv is not None:
 					r_f.boundary_surf.append(DesignScript_Curve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), custom_hight))
 					r_f.boundary_ds_type.append(ds_type)
-
 # @@@-----------------------Боундари Фэйс----------------------
 	for face in sp_geom_results.GetGeometry().Faces:
 		inserts_by_wall = []
@@ -218,5 +194,5 @@ for room in rooms:
 	surface_list_all.append(surface_in_room)
 	boundary_ds_type_by_room.append(r_f.boundary_ds_type)
 	boundary_by_room_level.append(r_f.boundary_level)
-
+rooms_time = rooms_timer.stop()
 OUT = surface_list_all, boundary_ds_type_by_room, boundary_by_room_level, r_f.separator_list
