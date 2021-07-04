@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # -----------------------Импоорт библиотек-----------------------
 import sys
 sys.path.append("C:\\Program Files (x86)\\IronPython 2.7\\Lib")
@@ -75,68 +76,69 @@ class RoomFinishing:
 	boundary_ds_type = []
 	boundary_level = []
 
-	def __init__(self, doc, link_doc, room):
+	def __init__(self, current_doc, link_doc, room):
 		"""Main parameters for room finishing construction."""
-		self.doc = doc
+		self.current_doc = current_doc
 		self.link_doc = link_doc
 		self.room = room
 # -----------------------Класс для хранения информации
 
 
 # -----------------------Функции----------------------
-def main_wall_by_id_work(face_host_id, doc, face, wall_type_names_to_exclude):
+def main_wall_by_id_work(face_host_id, current_doc, face, wall_type_names_to_exclude):
 	"""Choosing wall destiny by ID."""
-	global curtain_list
-	global full_id_list
+	# global curtain_list
+	# global full_id_list
 	# global inserts_by_wall
 	inserts_by_wall = []
-	full_id_list.append(face_host_id)
-	b_element = doc.GetElement(face_host_id)
+	# full_id_list.append(face_host_id)
+	b_element = current_doc.GetElement(face_host_id)
 	if b_element.GetType().Name == "Wall":
-		wall_type = doc.GetElement(b_element.GetTypeId())
+		wall_type = current_doc.GetElement(b_element.GetTypeId())
 		type_name = wall_type.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString()
 		if type_name in wall_type_names_to_exclude:
 			pass
-		elif wall_type.Kind == WallKind.Curtain:
-			curtain_list.append(b_element)
+		# elif wall_type.Kind == WallKind.Curtain:
+		# 	curtain_list.append(b_element)
 		else:
 			inserts_list = b_element.FindInserts(incopenings, incshadows, incwalls, incshared)
 			if not inserts_list:
 				pass
 			else:
 				for insert in inserts_list:
-					if doc.GetElement(insert).GetType().Name == "Opening":
+					if current_doc.GetElement(insert).GetType().Name == "Opening":
 						pass
 					else:
-						item = doc.GetElement(insert)
+						item = current_doc.GetElement(insert)
 						x = None
 						if item.GetType().Name == "FamilyInstance":
 							x = get_wall_cut(item, b_element, face)
 						elif item.GetType().Name == "Wall":
 							x = get_wall_profil(item, b_element, face)
 						else:
-							x = BoundingBox.ToCuboid(item.get_BoundingBox(doc.ActiveView).ToProtoType())
+							x = BoundingBox.ToCuboid(item.get_BoundingBox(current_doc.ActiveView).ToProtoType())
 						inserts_by_wall.append(x)
 	return inserts_by_wall
 
 
-def is_not_curtain_modelline(_id, _doc):
+def is_not_curtain_modelline(_id, current_doc):
 	"""Wall is curtain test."""
-	wall = _doc.GetElement(_id)
-	if wall.GetType().Name == "Wall" and wall.WallType.Kind == WallKind.Curtain:
-		return False
-	elif wall.GetType().Name == "ModelLine":
-		return False
-	else:
-		return True
+	wall = current_doc.GetElement(_id)
+	if wall:
+		if wall.GetType().Name == "Wall" and wall.WallType.Kind == WallKind.Curtain:
+			return False
+		elif wall.GetType().Name == "ModelLine":
+			return False
+		else:
+			return True
 
 
 def get_wall_cut(fi, wall, _face):
 	"""Get wall cunt."""
-	doc = fi.Document
+	current_doc = fi.Document
 	current_dir = StrongBox[XYZ](wall.Orientation)
 	try:
-		curve_loop1 = ExporterIFCUtils.GetInstanceCutoutFromWall(doc, wall, fi, current_dir)
+		curve_loop1 = ExporterIFCUtils.GetInstanceCutoutFromWall(current_doc, wall, fi, current_dir)
 		multpl = wall.Width
 		w_vector = wall.Orientation
 		f_vector = fi.FacingOrientation
@@ -160,7 +162,7 @@ def get_wall_cut(fi, wall, _face):
 		geom = GeometryCreationUtilities.CreateExtrusionGeometry(icurve_loop, extr_vector, wall.Width * 2).ToProtoType()
 		return geom
 	except:
-		geom = BoundingBox.ToCuboid(fi.get_BoundingBox(doc.ActiveView).ToProtoType())
+		geom = BoundingBox.ToCuboid(fi.get_BoundingBox(current_doc.ActiveView).ToProtoType())
 		return geom
 
 
@@ -205,59 +207,58 @@ def get_wall_p_curve(u_wall):
 		return None
 
 
-def get_wall_ds_type_material(doc, b_element, room, concrete_mat_prfx="елезобетон", room_param_name="Имя"):
+def get_wall_ds_type_material(current_doc, b_element, room, concrete_mat_prfx="елезобетон", room_param_name="Имя"):
 	"""Select DS material by structurual material of wall type."""
 	# room_func = room.LookupParameter(room_param_name).AsString()
 	room_func = room.get_Parameter(BuiltInParameter.ROOM_NAME)
 	if b_element.GetType().Name is not "RevitLinkInstance":
-		mat_name = doc.GetElement(b_element.GetTypeId()).get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM).AsValueString()
+		mat_name = current_doc.GetElement(b_element.GetTypeId()).get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM).AsValueString()
 		if concrete_mat_prfx in mat_name:
 			ds_mat_name = "Finishing_CONCRETE ({})".format(room_func)
-			create_material(ds_mat_name)
+			create_material(current_doc, 
+			ds_mat_name)
 		else:
 			ds_mat_name = "Finishing_MASONRY ({})".format(room_func)
-			create_material(ds_mat_name)
+			create_material(current_doc, ds_mat_name)
 	else:
 		ds_mat_name = "Finishing_MASONRY ({})".format(room_func)
-		create_material(ds_mat_name)
+		create_material(current_doc, ds_mat_name)
 	return ds_mat_name
 
 
-def create_material(mat_name):
+def create_material(current_doc, mat_name):
 	"""Create material, or find exist, by name."""
-	global doc
-	if Material.IsNameUnique(doc, mat_name):
-		mat = Material.Create(doc, mat_name)
-		doc.GetElement(mat).Color = Autodesk.Revit.DB.Color(Byte.Parse(str(randint(0, 255))), Byte.Parse(str(randint(0, 255))), Byte.Parse(str(randint(0, 255))))
+	if Material.IsNameUnique(current_doc, "mat_name"):
+		mat = Material.Create(current_doc, "mat_name")
+		current_doc.GetElement(mat).Color = Autodesk.Revit.DB.Color(Byte.Parse(str(randint(0, 255))), Byte.Parse(str(randint(0, 255))), Byte.Parse(str(randint(0, 255))))
 
 
-def get_type_if_null_id(doc, boundary, room, boundarylist, index):
+def get_type_if_null_id(current_doc, boundary, room, boundarylist, index):
 	"""Try find nearest element to chose type."""
 	global ds_type
 	try:
-		ds_type = get_wall_type_material(doc, boundary, room)
+		ds_type = get_wall_type_material(current_doc, boundary, room)
 	except:
 		pass
 	if index + 1 < len(boundarylist):
 		try:
-			ds_type = get_wall_type_material(doc, doc.GetElement(boundarylist[index + 1].ElementId), room)
+			ds_type = get_wall_type_material(current_doc, current_doc.GetElement(boundarylist[index + 1].ElementId), room)
 		except:
 			pass
 	elif index - 1 >= 0:
 		try:
-			ds_type = get_wall_type_material(doc, doc.GetElement(boundarylist[index - 1].ElementId), room)
+			ds_type = get_wall_type_material(current_doc, current_doc.GetElement(boundarylist[index - 1].ElementId), room)
 		except:
 			pass
 
 
-def get_wall_type_name(doc, b_element):
+def get_wall_type_name(current_doc, b_element):
 	"""Get symbol name."""
-	return doc.GetElement(b_element.GetTypeId()).get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString()
+	return current_doc.GetElement(b_element.GetTypeId()).get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString()
 
 
-def boundary_filter(b_element, boundary, room):
+def boundary_filter(current_doc, b_element, boundary, room, r_f):
 	"""Find only correct walls."""
-	global r_f
 	global ds_type
 	global crv
 	global wall_hight
@@ -267,21 +268,20 @@ def boundary_filter(b_element, boundary, room):
 		r_f.separator_list.append(boundary.GetCurve())
 # ---------------Убираем тип стены из расчёта ------------
 	elif b_element.GetType().Name == "Wall":
-		wall_box = b_element.get_BoundingBox(doc.ActiveView)
+		wall_box = b_element.get_BoundingBox(current_doc.ActiveView)
 		wall_hight = (wall_box.Max.Z - wall_box.Min.Z) * 304.8
-		ds_type = get_wall_ds_type_material(doc, b_element, room)
+		ds_type = get_wall_ds_type_material(current_doc, b_element, room)
 		crv = boundary.GetCurve()
 	else:
 		try:
-			ds_type = get_wall_ds_type_material(doc, b_element, room)
+			ds_type = get_wall_ds_type_material(current_doc, b_element, room)
 		except:
 			pass
 		crv = boundary.GetCurve()
 
 
-def dublicate_separate_filter(face):
+def dublicate_separate_filter(r_f, face):
 	"""Find only correct face."""
-	global r_f
 	test_list_dubl = []
 	test_list_separate = []
 
@@ -296,6 +296,7 @@ def dublicate_separate_filter(face):
 			test_list_separate.append(False)
 		else:
 			test_list_separate.append(True)
+
 	if any(test_list_separate) or any(test_list_dubl):
 		return False
 	else:
