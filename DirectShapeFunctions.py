@@ -88,7 +88,8 @@ def main_wall_by_id_work(face_host_id, doc, face, wall_type_names_to_exclude):
 	"""Choosing wall destiny by ID."""
 	global curtain_list
 	global full_id_list
-	global inserts_by_wall
+	# global inserts_by_wall
+	inserts_by_wall = []
 	full_id_list.append(face_host_id)
 	b_element = doc.GetElement(face_host_id)
 	if b_element.GetType().Name == "Wall":
@@ -116,6 +117,7 @@ def main_wall_by_id_work(face_host_id, doc, face, wall_type_names_to_exclude):
 						else:
 							x = BoundingBox.ToCuboid(item.get_BoundingBox(doc.ActiveView).ToProtoType())
 						inserts_by_wall.append(x)
+	return inserts_by_wall
 
 
 def is_not_curtain_modelline(_id, _doc):
@@ -275,3 +277,26 @@ def boundary_filter(b_element, boundary, room):
 		except:
 			pass
 		crv = boundary.GetCurve()
+
+
+def dublicate_separate_filter(face):
+	"""Find only correct face."""
+	global r_f
+	test_list_dubl = []
+	test_list_separate = []
+
+	for b_f in r_f.by_face_list:
+		if face.Equals(b_f):
+			test_list_dubl.append(True)
+		else:
+			test_list_dubl.append(False)
+
+	for s_l in r_f.separator_list:
+		if str(face.Intersect(s_l)) == "Disjoint":
+			test_list_separate.append(False)
+		else:
+			test_list_separate.append(True)
+	if any(test_list_separate) or any(test_list_dubl):
+		return False
+	else:
+		return True

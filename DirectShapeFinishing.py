@@ -25,7 +25,7 @@ from Autodesk.Revit.DB.IFC import ExporterIFCUtils
 
 clr.AddReference("RevitNodes")
 import Revit
-clr.ImportExtensions(Revit.Elements)  # ToDSType не работает00 без
+clr.ImportExtensions(Revit.Elements)  # ToDSType не работает без
 clr.ImportExtensions(Revit.GeometryConversion)
 
 clr.AddReference("RevitServices")
@@ -38,7 +38,7 @@ from Autodesk.DesignScript.Geometry import Curve as DesignScript_Curve
 
 from .DirectShapeFunctions import get_wall_cut, get_wall_p_curve, get_wall_profil, get_wall_ds_type_material, get_wall_type_name, get_type_if_null_id
 from .DirectShapeFunctions import create_material, is_not_curtain_modelline, main_wall_by_id_work
-from .DirectShapeFunctions import boundary_filter
+from .DirectShapeFunctions import boundary_filter, dublicate_separate_filter
 from .DirectShapeFunctions import RoomFinishing, TimeCounter
 # -----------------------Импоорт библиотек----------------------
 
@@ -86,7 +86,7 @@ move_z = UnitUtils.ConvertToInternalUnits(move_z_value, DisplayUnitType.DUT_MILL
 transform_Z = Transform.CreateTranslation(XYZ(0, 0, move_z))
 
 # @@@-----------------------Room params----------------------
-rooms_timer = TimeCounter()
+timer_rooms = TimeCounter()
 for room in rooms:
 	room_area = room.get_Parameter(BuiltInParameter.ROOM_AREA).AsDouble()
 	room_volume = room.get_Parameter(BuiltInParameter.ROOM_VOLUME).AsDouble()
@@ -134,50 +134,52 @@ for room in rooms:
 		inserts_by_wall = []
 		for bface in sp_geom_results.GetBoundaryFaceInfo(face):
 			inserts_by_wall = []
-			test_list = []
-			test_list2 = []
+			# test_list_dubl = []
+			# test_list_separate = []
 			link_id = 0
-			by_face_h = False
-			by_face_l = False
-			if bface.SubfaceType is not SubfaceType.Side:
-				pass
-			else:
+			# by_face_h = False
+			# by_face_l = False
+			if bface.SubfaceType is SubfaceType.Side:
 				host_id = bface.SpatialBoundaryElement.HostElementId
+				link_id = bface.SpatialBoundaryElement.LinkedElementId
 				if str(host_id) is not "-1" and is_not_curtain_modelline(host_id, doc):
-					r_f.by_face_list.append(face)  # -------------Cобираем плоскость
-					by_face_h = face
-					main_wall_by_id_work(host_id, doc, by_face_h, wall_type_names_to_exclude)
-					r_f.inserts.extend(inserts_by_wall)
-				else:
-					link_id = bface.SpatialBoundaryElement.LinkedElementId
-					if str(link_id) is not "-1" and is_not_curtain_modelline(link_id, link_doc):
-						r_f.by_face_list.append(face)  # ---------Cобираем плоскость
-						by_face_l = face
+					if dublicate_separate_filter(face):
+						r_f.by_face_list.append(face)  # -------------Cобираем плоскость
+						# by_face_h = face
+						inserts_by_wall = main_wall_by_id_work(host_id, doc, face, wall_type_names_to_exclude)
 						r_f.inserts.extend(inserts_by_wall)
-					else:
-						# @@@-----------------------Тут убираем дубликаты плоскостей----------------------
-						for b_f in r_f.by_face_list:
-							if face.Equals(b_f):
-								test_list.append(True)
-							else:
-								test_list.append(False)
-						if any(test_list):
-							pass
-						else:
-							# @@@-----------------------Тут убираем разделители----------------------
-							for s_l in r_f.separator_list:
-								if str(face.Intersect(s_l)) == "Disjoint":
-									test_list2.append(False)
-								else:
-									test_list2.append(True)
-							if any(test_list2):
-								pass
-							elif bface.SubfaceArisesFromElementFace:  # <------Убираем плоскости витражей
-								pass
-							else:
-								r_f.by_face_list.append(face)  # <------Cобираем торцевые плоскости
-								by_face = face
-								r_f.inserts.extend(inserts_by_wall)
+				# else:
+					# link_id = bface.SpatialBoundaryElement.LinkedElementId
+				elif str(link_id) is not "-1" and is_not_curtain_modelline(link_id, link_doc):
+					if dublicate_separate_filter(face):
+						r_f.by_face_list.append(face)  # ---------Cобираем плоскость
+						# by_face_l = face
+						inserts_by_wall = main_wall_by_id_work(link_id, link_doc, face, wall_type_names_to_exclude)
+						r_f.inserts.extend(inserts_by_wall)
+				# else:
+					# @@@-----------------------Тут убираем дубликаты плоскостей----------------------
+					# for b_f in r_f.by_face_list:
+					# 	if face.Equals(b_f):
+					# 		test_list_dubl.append(True)
+					# 	else:
+					# 		test_list_dubl.append(False)
+					# if any(test_list_dubl):
+					# 	pass
+					# else:
+					# 	# @@@-----------------------Тут убираем разделители----------------------
+					# 	for s_l in r_f.separator_list:
+					# 		if str(face.Intersect(s_l)) == "Disjoint":
+					# 			test_list_separate.append(False)
+					# 		else:
+					# 			test_list_separate.append(True)
+					# 	if any(test_list_separate):
+					# 		pass
+					# 	elif bface.SubfaceArisesFromElementFace:  # <------Убираем плоскости витражей
+					# 		pass
+					# 	else:
+					# 		r_f.by_face_list.append(face)  # <------Cобираем торцевые плоскости
+					# 		# by_face = face
+					# 		r_f.inserts.extend(inserts_by_wall)
 	insertslist.append(r_f.inserts)
 	surface_in_room = []
 	for bs in r_f.boundary_surf:
@@ -194,5 +196,5 @@ for room in rooms:
 	surface_list_all.append(surface_in_room)
 	boundary_ds_type_by_room.append(r_f.boundary_ds_type)
 	boundary_by_room_level.append(r_f.boundary_level)
-rooms_time = rooms_timer.stop()
+time_rooms = timer_rooms.stop()
 OUT = surface_list_all, boundary_ds_type_by_room, boundary_by_room_level, r_f.separator_list
