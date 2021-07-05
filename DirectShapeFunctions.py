@@ -20,6 +20,7 @@ import Autodesk
 from Autodesk.Revit.DB import SpatialElement, SpatialElementBoundaryLocation, SpatialElementBoundaryOptions, SpatialElementBoundarySubface, SpatialElementGeometryCalculator
 from Autodesk.Revit.DB import BuiltInParameter, Color, DisplayUnitType, ElementId, Material, SetComparisonResult, UnitUtils, WallKind
 from Autodesk.Revit.DB import Curve, CurveLoop, GeometryCreationUtilities, Line, SolidOptions, SubfaceType, Transform, XYZ
+from Autodesk.Revit.DB import UV
 clr.AddReference('RevitAPIIFC')
 from Autodesk.Revit.DB.IFC import ExporterIFCUtils
 
@@ -85,6 +86,13 @@ class RoomFinishing:
 
 
 # -----------------------Функции----------------------
+def wall_profil(face_host_id, current_doc, face):
+	"""Find wall profil."""
+	b_element = current_doc.GetElement(face_host_id)
+	if b_element.GetType().Name == "Wall":
+		return b_element.GetGeometryObjectFromReference(face.Reference)
+
+
 def main_wall_by_id_work(face_host_id, current_doc, face, wall_type_names_to_exclude):
 	"""Choosing wall destiny by ID."""
 	# global curtain_list
@@ -280,24 +288,31 @@ def boundary_filter(current_doc, b_element, boundary, room, r_f):
 		crv = boundary.GetCurve()
 
 
-def dublicate_separate_filter(r_f, face):
+def dublicate_separate_filter(by_face_list, face):
 	"""Find only correct face."""
 	test_list_dubl = []
-	test_list_separate = []
-
-	for b_f in r_f.by_face_list:
-		if face.Equals(b_f):
+	# test_list_separate = []
+	center_uv = UV(0.5, 0.5)
+	face_point = face.Evaluate(center_uv)
+	for b_f in by_face_list:
+		if face_point.ToString() == b_f.Evaluate(center_uv).ToString():
 			test_list_dubl.append(True)
 		else:
 			test_list_dubl.append(False)
 
-	for s_l in r_f.separator_list:
-		if str(face.Intersect(s_l)) == "Disjoint":
-			test_list_separate.append(False)
-		else:
-			test_list_separate.append(True)
+	# for b_f in r_f.by_face_list:
+	# 	if face.Equals(b_f):
+	# 		test_list_dubl.append(True)
+	# 	else:
+	# 		test_list_dubl.append(False)
 
-	if any(test_list_separate) or any(test_list_dubl):
+	# for s_l in r_f.separator_list:
+	# 	if str(face.Intersect(s_l)) == "Disjoint":
+	# 		test_list_separate.append(False)
+	# 	else:
+	# 		test_list_separate.append(True)
+
+	if any(test_list_dubl):
 		return False
 	else:
 		return True
