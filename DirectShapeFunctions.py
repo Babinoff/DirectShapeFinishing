@@ -215,7 +215,7 @@ def get_wall_p_curve(u_wall):
 		return None
 
 
-def get_wall_ds_type_material(current_doc, b_element, room, concrete_mat_prfx="елезобетон", room_param_name="Имя"):
+def get_wall_ds_type_material(current_doc, b_element, room, concrete_mat_prfx="елезобетон"):
 	"""Select DS material by structurual material of wall type."""
 	# room_func = room.LookupParameter(room_param_name).AsString()
 	room_func = room.get_Parameter(BuiltInParameter.ROOM_NAME)
@@ -223,8 +223,7 @@ def get_wall_ds_type_material(current_doc, b_element, room, concrete_mat_prfx="�
 		mat_name = current_doc.GetElement(b_element.GetTypeId()).get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM).AsValueString()
 		if concrete_mat_prfx in mat_name:
 			ds_mat_name = "Finishing_CONCRETE ({})".format(room_func)
-			create_material(current_doc, 
-			ds_mat_name)
+			create_material(current_doc, ds_mat_name)
 		else:
 			ds_mat_name = "Finishing_MASONRY ({})".format(room_func)
 			create_material(current_doc, ds_mat_name)
