@@ -18,7 +18,7 @@ from System.Diagnostics import Process, Stopwatch
 clr.AddReference('RevitAPI')
 import Autodesk
 from Autodesk.Revit.DB import SpatialElement, SpatialElementBoundaryLocation, SpatialElementBoundaryOptions, SpatialElementBoundarySubface, SpatialElementGeometryCalculator
-from Autodesk.Revit.DB import BuiltInParameter, Color, DisplayUnitType, ElementId, Material, SetComparisonResult, UnitUtils, WallKind
+from Autodesk.Revit.DB import BuiltInParameter, BuiltInCategory, Color, DisplayUnitType, ElementId, Material, SetComparisonResult, UnitUtils, WallKind
 from Autodesk.Revit.DB import Curve, CurveLoop, GeometryCreationUtilities, Line, SolidOptions, SubfaceType, Transform, XYZ
 from Autodesk.Revit.DB import UV
 clr.AddReference('RevitAPIIFC')
@@ -132,7 +132,7 @@ def main_wall_by_id_work(face_host_id, current_doc, face, wall_type_names_to_exc
 def is_not_curtain_modelline(_id, current_doc):
 	"""Wall is curtain test."""
 	wall = current_doc.GetElement(_id)
-	if wall:
+	if wall and wall.GetType().Name != "DirectShape":
 		if wall.GetType().Name == "Wall" and wall.WallType.Kind == WallKind.Curtain:
 			return False
 		elif wall.GetType().Name == "ModelLine":
@@ -218,25 +218,38 @@ def get_wall_p_curve(u_wall):
 def get_wall_ds_type_material(current_doc, b_element, room, concrete_mat_prfx="елезобетон"):
 	"""Select DS material by structurual material of wall type."""
 	# room_func = room.LookupParameter(room_param_name).AsString()
-	room_func = room.get_Parameter(BuiltInParameter.ROOM_NAME)
-	if b_element.GetType().Name is not "RevitLinkInstance":
+	room_func = room.get_Parameter(BuiltInParameter.ROOM_NAME).AsString()
+	ds_mat_name = "Finishing_BASE"
+	mat_name = ""
+	if current_doc.GetElement(b_element.GetTypeId()) and current_doc.GetElement(b_element.GetTypeId()).get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM):
 		mat_name = current_doc.GetElement(b_element.GetTypeId()).get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM).AsValueString()
-		if concrete_mat_prfx in mat_name:
-			ds_mat_name = "Finishing_CONCRETE ({})".format(room_func)
+		if concrete_mat_prfx in str(mat_name):
+			ds_mat_name = "Finishing_CONCRETE ({}) ({})".format(room_func, mat_name)
 			create_material(current_doc, ds_mat_name)
 		else:
-			ds_mat_name = "Finishing_MASONRY ({})".format(room_func)
+			ds_mat_name = "Finishing_brickwork ({}) ({})".format(room_func, mat_name)
 			create_material(current_doc, ds_mat_name)
 	else:
-		ds_mat_name = "Finishing_MASONRY ({})".format(room_func)
+		ds_mat_name = "Finishing_brickwork ({}) ({})".format(room_func, mat_name)
 		create_material(current_doc, ds_mat_name)
+	# if b_element.GetType().Name is not "RevitLinkInstance":
+	# 	mat_name = current_doc.GetElement(b_element.GetTypeId()).get_Parameter(BuiltInParameter.STRUCTURAL_MATERIAL_PARAM).AsValueString()
+	# 	if concrete_mat_prfx in mat_name:
+	# 		ds_mat_name = "Finishing_CONCRETE ({})".format(room_func)
+	# 		create_material(current_doc, ds_mat_name)
+	# 	else:
+	# 		ds_mat_name = "Finishing_MASONRY ({})".format(room_func)
+	# 		create_material(current_doc, ds_mat_name)
+	# else:
+	# 	ds_mat_name = "Finishing_MASONRY ({})".format(room_func)
+	# 	create_material(current_doc, ds_mat_name)
 	return ds_mat_name
 
 
 def create_material(current_doc, mat_name):
 	"""Create material, or find exist, by name."""
-	if Material.IsNameUnique(current_doc, "mat_name"):
-		mat = Material.Create(current_doc, "mat_name")
+	if Material.IsNameUnique(current_doc, mat_name):
+		mat = Material.Create(current_doc, mat_name)
 		current_doc.GetElement(mat).Color = Autodesk.Revit.DB.Color(Byte.Parse(str(randint(0, 255))), Byte.Parse(str(randint(0, 255))), Byte.Parse(str(randint(0, 255))))
 
 

@@ -110,6 +110,8 @@ wall_type_mat_names_all = []
 
 test_room_faces = []
 
+id_minus_one = ElementId(-1)
+
 # move_z = IN[5]*0.00328084 # noqa
 move_z = UnitUtils.ConvertToInternalUnits(move_z_value, DisplayUnitType.DUT_MILLIMETERS)  # noqa
 transform_Z = Transform.CreateTranslation(XYZ(0, 0, move_z))
@@ -134,6 +136,7 @@ for room in rooms:
 				by_face_list = []
 				wall_type_mat_names = []
 				ds_type = "Finishing_BASE"
+				create_material(current_doc, ds_type)
 		# @@@-----------------------Боундари Элементс----------------------
 				# for boundarylist in room.GetBoundarySegments(options):
 				# 	b_s = []
@@ -189,12 +192,9 @@ for room in rooms:
 								test_faces.append((dublicate_separate_filter(by_face_list, face), face.ToProtoType(
 								), (host_id.IntegerValue == -1 and link_id.IntegerValue == -1), host_id, link_id, link_inst_id))
 								# r_f.by_face_list.append(face.ToProtoType()[0])
-								if host_id.IntegerValue == -1 and link_id.IntegerValue == -1:
-										if dublicate_separate_filter(by_face_list, face):
-												by_face_list.append(face)
-												wall_type_mat_names.append(ds_type)
 												# r_f.by_face_list.append(face.ToProtoType()[0])
-								elif str(host_id) is not "-1" and is_not_curtain_modelline(host_id, current_doc):
+								# elif str(host_id) is not "-1" and is_not_curtain_modelline(host_id, current_doc):
+								if host_id != id_minus_one and is_not_curtain_modelline(host_id, current_doc):
 										if dublicate_separate_filter(by_face_list, face):
 												b_element = current_doc.GetElement(host_id)
 												if b_element:
@@ -205,7 +205,9 @@ for room in rooms:
 												# r_f.by_face_list.append(face.ToProtoType()[0])  # -------------Cобираем плоскость
 												inserts_by_wall = main_wall_by_id_work(host_id, current_doc, face, wall_type_names_to_exclude)
 												inserts.extend(inserts_by_wall)
-								elif str(link_id) is not "-1" and is_not_curtain_modelline(link_id, link_doc):
+								elif host_id != id_minus_one and not is_not_curtain_modelline(host_id, current_doc):
+									pass
+								elif link_id != id_minus_one and is_not_curtain_modelline(link_id, link_doc):
 										if dublicate_separate_filter(by_face_list, face):
 												# b_element = link_doc.GetElement(link_id)
 												# if b_element:
@@ -215,10 +217,21 @@ for room in rooms:
 												wall_type_mat_names.append(ds_type)
 												# r_f.by_face_list.append(face.ToProtoType()[0])  # ---------Cобираем плоскость
 												inserts_by_wall = main_wall_by_id_work(link_id, link_doc, face, wall_type_names_to_exclude)
-												inserts.extend(inserts_by_wall)
-								elif dublicate_separate_filter(by_face_list, face):
-										by_face_list.append(face)
-										wall_type_mat_names.append(ds_type)
+								elif link_id != id_minus_one and not is_not_curtain_modelline(link_id, link_doc):
+									pass
+								elif host_id == id_minus_one and link_id == id_minus_one:
+										if dublicate_separate_filter(by_face_list, face):
+												by_face_list.append(face)
+												wall_type_mat_names.append(ds_type)
+								else:
+									if dublicate_separate_filter(by_face_list, face):
+											by_face_list.append(face)
+											wall_type_mat_names.append(ds_type)
+											test_faces.extend((bface.SubfaceType, SubfaceType.Side, str(bface.SubfaceType) is str(SubfaceType.Side)))
+								# 				inserts.extend(inserts_by_wall)
+								# elif dublicate_separate_filter(by_face_list, face):
+								# 		by_face_list.append(face)
+								# 		wall_type_mat_names.append(ds_type)
 										# r_f.by_face_list.append(face.ToProtoType()[0])
 
 				# insertslist.append(r_f.inserts)
@@ -245,4 +258,4 @@ time_rooms = timer_rooms.stop()
 
 TransactionManager.Instance.ForceCloseTransaction()
 
-OUT = time_rooms, surface_list_all, wall_type_mat_names_all
+OUT = time_rooms, surface_list_all, wall_type_mat_names_all, test_room_faces
