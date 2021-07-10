@@ -20,11 +20,13 @@ clr.AddReference("RevitServices")
 
 clr.AddReference('ProtoGeometry')
 
+# import DirectShapeFunctions
 from DirectShapeFunctions import RoomFinishing, TimeCounter, wall_profil
 from DirectShapeFunctions import boundary_filter, dublicate_separate_filter
 from DirectShapeFunctions import create_material, is_not_curtain_modelline, main_wall_by_id_work
 from DirectShapeFunctions import get_wall_cut, get_wall_p_curve, get_wall_profil, get_wall_ds_type_material, get_wall_type_name, get_type_if_null_id
-# import DirectShapeFunctions
+# from DirectShapeFinishing import main_face_filter
+
 from Autodesk.DesignScript.Geometry import Curve as DesignScript_Curve
 from Autodesk.DesignScript.Geometry import BoundingBox, Surface
 from RevitServices.Persistence import DocumentManager
@@ -121,141 +123,117 @@ TransactionManager.Instance.EnsureInTransaction(current_doc)
 # @@@-----------------------Room params----------------------
 timer_rooms = TimeCounter()
 for room in rooms:
-		test_faces = []
-		room_area = room.get_Parameter(BuiltInParameter.ROOM_AREA).AsDouble()
-		room_volume = room.get_Parameter(BuiltInParameter.ROOM_VOLUME).AsDouble()
-		if room_volume > 0:
-				room_height = room_volume / room_area * 304.8
-				room_level = current_doc.GetElement(room.get_Parameter(
-						BuiltInParameter.ROOM_LEVEL_ID).AsElementId())
-				sp_geom_results = calculator.CalculateSpatialElementGeometry(room)
-				roomSolid = sp_geom_results.GetGeometry()
-				r_f = RoomFinishing(current_doc, link_doc, room)
-				r_f.boundary_surf = sp_geom_results.GetGeometry().Faces
-				inserts = []
-				by_face_list = []
-				wall_type_mat_names = []
-				ds_type = "Finishing_BASE"
-				create_material(current_doc, ds_type)
-		# @@@-----------------------Боундари Элементс----------------------
-				# for boundarylist in room.GetBoundarySegments(options):
-				# 	b_s = []
-				# 	b_element1 = None
-				# 	b_element2 = None
-				# 	ds_type = "Finishing_BASE"
-				# 	for index, boundary in enumerate(boundarylist):
-				# 		crv = None
-				# 		wall_hight = room_height
-				# 		if str(boundary.ElementId) == "-1" and str(boundary.LinkElementId) == "-1":
-				# 			get_type_if_null_id(current_doc, boundary, room, boundarylist, index)
-				# 		elif str(boundary.ElementId) is not "-1":
-				# 			b_element1 = current_doc.GetElement(boundary.ElementId)
-				# 			boundary_filter(current_doc, b_element1, boundary, room, r_f)
-				# 		elif str(boundary.LinkElementId) is not "-1":
-				# 			b_element2 = link_doc.GetElement(boundary.LinkElementId)
-				# 			boundary_filter(current_doc, b_element2, boundary, room, r_f)
-				# 		r_f.boundary_level.append(room_level)
-				# 		# ----------------Включаем расчет по высоте стен--------------------------------------------------
-				# 		if crv is not None and transform_Z_enable: # noqa
-				# 			crv = crv.CreateTransformed(transform_Z).ToProtoType()
-				# 		elif crv is not None:
-				# 			crv = crv.ToProtoType()
-				# 		if room_height_enable: # noqa
-				# 			if crv is not None:
-				# 				if wall_hight > room_height:
-				# 					r_f.boundary_surf.append(DesignScript_Curve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), room_height))
-				# 				else:
-				# 					r_f.boundary_surf.append(DesignScript_Curve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), wall_hight))
-				# 				r_f.boundary_ds_type.append(ds_type)
-				# 		else:
-				# 			if crv is not None:
-				# 				r_f.boundary_surf.append(DesignScript_Curve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), custom_hight))
-				# 				r_f.boundary_ds_type.append(ds_type)
-		# @@@-----------------------Боундари Фэйс----------------------
-				for face in sp_geom_results.GetGeometry().Faces:
-						inserts_by_wall = []
-						# test_faces.append(face.ToProtoType())
-						# for bface in sp_geom_results.GetBoundaryFaceInfo(face):
-						bface = sp_geom_results.GetBoundaryFaceInfo(face)[0]
-						# test_faces.append(bface)
-						# test_list_dubl = []
-						# test_list_separate = []
-						link_id = 0
-						# by_face_h = False
-						# by_face_l = False
-						# test_faces.append((bface.SubfaceType, SubfaceType.Side, str(bface.SubfaceType) is str(SubfaceType.Side)))
-						if str(bface.SubfaceType) is str(SubfaceType.Side):
-								sbe_id = bface.SpatialBoundaryElement
-								host_id = sbe_id.HostElementId
-								link_id = sbe_id.LinkedElementId
-								link_inst_id = sbe_id.LinkInstanceId
-								test_faces.append((dublicate_separate_filter(by_face_list, face), face.ToProtoType(
-								), (host_id.IntegerValue == -1 and link_id.IntegerValue == -1), host_id, link_id, link_inst_id))
-								# r_f.by_face_list.append(face.ToProtoType()[0])
-												# r_f.by_face_list.append(face.ToProtoType()[0])
-								# elif str(host_id) is not "-1" and is_not_curtain_modelline(host_id, current_doc):
-								if host_id != id_minus_one and is_not_curtain_modelline(host_id, current_doc):
-										if dublicate_separate_filter(by_face_list, face):
-												b_element = current_doc.GetElement(host_id)
-												if b_element:
-														ds_type = get_wall_ds_type_material(current_doc, b_element, room)
-												# full_id_list.append((host_id.ToString(), face.Evaluate(UV(0.5, 0.5)), by_face_list))
-												by_face_list.append(face)
-												wall_type_mat_names.append(ds_type)
-												# r_f.by_face_list.append(face.ToProtoType()[0])  # -------------Cобираем плоскость
-												inserts_by_wall = main_wall_by_id_work(host_id, current_doc, face, wall_type_names_to_exclude)
-												inserts.extend(inserts_by_wall)
-								elif host_id != id_minus_one and not is_not_curtain_modelline(host_id, current_doc):
-									pass
-								elif link_id != id_minus_one and is_not_curtain_modelline(link_id, link_doc):
-										if dublicate_separate_filter(by_face_list, face):
-												# b_element = link_doc.GetElement(link_id)
-												# if b_element:
-												# 		ds_type = get_wall_ds_type_material(link_doc, b_element, room)
-												# full_id_list.append((link_id.ToString(), face.Evaluate(UV(0.5, 0.5)), by_face_list))
-												by_face_list.append(face)
-												wall_type_mat_names.append(ds_type)
-												# r_f.by_face_list.append(face.ToProtoType()[0])  # ---------Cобираем плоскость
-												inserts_by_wall = main_wall_by_id_work(link_id, link_doc, face, wall_type_names_to_exclude)
-								elif link_id != id_minus_one and not is_not_curtain_modelline(link_id, link_doc):
-									pass
-								elif host_id == id_minus_one and link_id == id_minus_one:
-										if dublicate_separate_filter(by_face_list, face):
-												by_face_list.append(face)
-												wall_type_mat_names.append(ds_type)
-								else:
-									if dublicate_separate_filter(by_face_list, face):
-											by_face_list.append(face)
-											wall_type_mat_names.append(ds_type)
-											test_faces.extend((bface.SubfaceType, SubfaceType.Side, str(bface.SubfaceType) is str(SubfaceType.Side)))
-								# 				inserts.extend(inserts_by_wall)
-								# elif dublicate_separate_filter(by_face_list, face):
-								# 		by_face_list.append(face)
-								# 		wall_type_mat_names.append(ds_type)
-										# r_f.by_face_list.append(face.ToProtoType()[0])
+	test_faces = []
+	room_area = room.get_Parameter(BuiltInParameter.ROOM_AREA).AsDouble()
+	room_volume = room.get_Parameter(BuiltInParameter.ROOM_VOLUME).AsDouble()
+	if room_volume > 0:
+		room_height = room_volume / room_area * 304.8
+		room_level = current_doc.GetElement(room.get_Parameter(BuiltInParameter.ROOM_LEVEL_ID).AsElementId())
+		sp_geom_results = calculator.CalculateSpatialElementGeometry(room)
+		roomSolid = sp_geom_results.GetGeometry()
+		r_f = RoomFinishing(current_doc, link_doc, room)
+		r_f.boundary_surf = sp_geom_results.GetGeometry().Faces
+		inserts = []
+		by_face_list = []
+		wall_type_mat_names = []
+		ds_type = "Finishing_BASE"
+		create_material(current_doc, ds_type)
+# @@@-----------------------Боундари Элементс----------------------
+		# for boundarylist in room.GetBoundarySegments(options):
+		# 	b_s = []
+		# 	b_element1 = None
+		# 	b_element2 = None
+		# 	ds_type = "Finishing_BASE"
+		# 	for index, boundary in enumerate(boundarylist):
+		# 		crv = None
+		# 		wall_hight = room_height
+		# 		if str(boundary.ElementId) == "-1" and str(boundary.LinkElementId) == "-1":
+		# 			get_type_if_null_id(current_doc, boundary, room, boundarylist, index)
+		# 		elif str(boundary.ElementId) is not "-1":
+		# 			b_element1 = current_doc.GetElement(boundary.ElementId)
+		# 			boundary_filter(current_doc, b_element1, boundary, room, r_f)
+		# 		elif str(boundary.LinkElementId) is not "-1":
+		# 			b_element2 = link_doc.GetElement(boundary.LinkElementId)
+		# 			boundary_filter(current_doc, b_element2, boundary, room, r_f)
+		# 		r_f.boundary_level.append(room_level)
+		# 		# ----------------Включаем расчет по высоте стен--------------------------------------------------
+		# 		if crv is not None and transform_Z_enable: # noqa
+		# 			crv = crv.CreateTransformed(transform_Z).ToProtoType()
+		# 		elif crv is not None:
+		# 			crv = crv.ToProtoType()
+		# 		if room_height_enable: # noqa
+		# 			if crv is not None:
+		# 				if wall_hight > room_height:
+		# 					r_f.boundary_surf.append(DesignScript_Curve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), room_height))
+		# 				else:
+		# 					r_f.boundary_surf.append(DesignScript_Curve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), wall_hight))
+		# 				r_f.boundary_ds_type.append(ds_type)
+		# 		else:
+		# 			if crv is not None:
+		# 				r_f.boundary_surf.append(DesignScript_Curve.Extrude(crv, Autodesk.Revit.DB.XYZ(0, 0, 1).ToVector(), custom_hight))
+		# 				r_f.boundary_ds_type.append(ds_type)
+# @@@-----------------------Боундари Фэйс----------------------
+		for face in sp_geom_results.GetGeometry().Faces:
+			inserts_by_wall = []
+			# test_faces.append(face.ToProtoType())
+			# for bface in sp_geom_results.GetBoundaryFaceInfo(face):
+			bface = sp_geom_results.GetBoundaryFaceInfo(face)[0]
+			# test_faces.append(bface)
+			# test_list_dubl = []
+			# test_list_separate = []
+			link_id = 0
+			# by_face_h = False
+			# by_face_l = False
+			# test_faces.append((bface.SubfaceType, SubfaceType.Side, str(bface.SubfaceType) is str(SubfaceType.Side)))
+			if str(bface.SubfaceType) is str(SubfaceType.Side):
+				sbe_id = bface.SpatialBoundaryElement
+				host_id = sbe_id.HostElementId
+				link_id = sbe_id.LinkedElementId
+				link_inst_id = sbe_id.LinkInstanceId
+				if main_face_filter(host_id, link_id, current_doc, link_doc):
+					test_faces.append((dublicate_separate_filter(by_face_list, face), face.ToProtoType(
+					), (host_id.IntegerValue == -1 and link_id.IntegerValue == -1), host_id, link_id, link_inst_id))
+					if dublicate_separate_filter(by_face_list, face):
+						b_element = current_doc.GetElement(host_id)
+						if b_element:
+								ds_type = get_wall_ds_type_material(current_doc, b_element, room)
+						# full_id_list.append((host_id.ToString(), face.Evaluate(UV(0.5, 0.5)), by_face_list))
+						by_face_list.append(face)
+						wall_type_mat_names.append(ds_type)
+						# r_f.by_face_list.append(face.ToProtoType()[0])  # -------------Cобираем плоскость
+						inserts_by_wall = main_wall_by_id_work(host_id, current_doc, face, wall_type_names_to_exclude)
+					elif host_id == id_minus_one and link_id == id_minus_one:
+						if dublicate_separate_filter(by_face_list, face):
+							by_face_list.append(face)
+							wall_type_mat_names.append(ds_type)
+									# else:
+									# 	if dublicate_separate_filter(by_face_list, face):
+									# 			by_face_list.append(face)
+									# 			wall_type_mat_names.append(ds_type)
+									# 			test_faces.extend((bface.SubfaceType, SubfaceType.Side, str(bface.SubfaceType) is str(SubfaceType.Side)))
 
 				# insertslist.append(r_f.inserts)
-				surface_in_room = []
-				for bs in by_face_list:
-						new_bs = bs.ToProtoType()[0]
-						for ins in inserts:
-								if ins and new_bs.DoesIntersect(ins):
-										try:
-												# -------------------ВЫРЕЗАЕТ ИЗ ПЛОСКОСТИ СТЕНЫ ЕСЛИ ДВЕРЬ ПРИМЫКАЕТ К НЕЙ ТОРЦОМ, ИСПРАВИТЬ -------------------
-												# -------------------нужен метот для получения плоскости стены с изминёным профилем -------------------
-												new_bs = new_bs.SubtractFrom(ins)[0]
-										except:
-												pass
-						surface_in_room.append(new_bs)
-				surface_list_all.append(surface_in_room)
-				boundary_ds_type_by_room.append(r_f.boundary_ds_type)
-				boundary_by_room_level.append(r_f.boundary_level)
-				test_room_faces.append(test_faces)
-				r_f_list.append(r_f)
-				wall_type_mat_names_all.append(wall_type_mat_names)
+		surface_in_room = []
+		for bs in by_face_list:
+			new_bs = bs.ToProtoType()[0]
+			for ins in inserts:
+				if ins and new_bs.DoesIntersect(ins):
+						try:
+								# -------------------ВЫРЕЗАЕТ ИЗ ПЛОСКОСТИ СТЕНЫ ЕСЛИ ДВЕРЬ ПРИМЫКАЕТ К НЕЙ ТОРЦОМ, ИСПРАВИТЬ -------------------
+								# -------------------нужен метот для получения плоскости стены с изминёным профилем -------------------
+								new_bs = new_bs.SubtractFrom(ins)[0]
+						except:
+								pass
+			surface_in_room.append(new_bs)
+		surface_list_all.append(surface_in_room)
+		boundary_ds_type_by_room.append(r_f.boundary_ds_type)
+		boundary_by_room_level.append(r_f.boundary_level)
+		test_room_faces.append(test_faces)
+		r_f_list.append(r_f)
+		wall_type_mat_names_all.append(wall_type_mat_names)
 time_rooms = timer_rooms.stop()
 # , boundary_ds_type_by_room, test_room_faces
 
 TransactionManager.Instance.ForceCloseTransaction()
 
-OUT = time_rooms, surface_list_all, wall_type_mat_names_all, test_room_faces
+OUT = time_rooms, surface_list_all, wall_type_mat_names_all

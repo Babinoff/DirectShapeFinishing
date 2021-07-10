@@ -93,6 +93,27 @@ def wall_profil(face_host_id, current_doc, face):
 		return b_element.GetGeometryObjectFromReference(face.Reference)
 
 
+def main_face_filter(host_id, link_id, current_doc, link_doc):
+	"""Filter to remove all what not needet."""
+	id_minus_one = ElementId(-1)
+	if host_id != id_minus_one:
+		return is_not_curtain_modelline(host_id, current_doc)
+	elif link_id != id_minus_one:
+		return is_not_curtain_modelline(link_id, link_doc)
+
+
+def is_not_curtain_modelline(id, doc):
+	"""Wall is curtain test."""
+	wall = doc.GetElement(id)
+	if wall and wall.GetType().Name != "DirectShape":
+		if wall.GetType().Name == "Wall" and wall.WallType.Kind == WallKind.Curtain:
+			return False
+		elif wall.GetType().Name == "ModelLine":
+			return False
+		else:
+			return True
+
+
 def main_wall_by_id_work(face_host_id, current_doc, face, wall_type_names_to_exclude):
 	"""Choosing wall destiny by ID."""
 	# global curtain_list
@@ -127,18 +148,6 @@ def main_wall_by_id_work(face_host_id, current_doc, face, wall_type_names_to_exc
 							x = BoundingBox.ToCuboid(item.get_BoundingBox(current_doc.ActiveView).ToProtoType())
 						inserts_by_wall.append(x)
 	return inserts_by_wall
-
-
-def is_not_curtain_modelline(_id, current_doc):
-	"""Wall is curtain test."""
-	wall = current_doc.GetElement(_id)
-	if wall and wall.GetType().Name != "DirectShape":
-		if wall.GetType().Name == "Wall" and wall.WallType.Kind == WallKind.Curtain:
-			return False
-		elif wall.GetType().Name == "ModelLine":
-			return False
-		else:
-			return True
 
 
 def get_wall_cut(fi, wall, _face):
