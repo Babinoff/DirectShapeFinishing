@@ -13,21 +13,18 @@ import System
 from System import Byte, Type
 clr.AddReference('System')
 from System.Collections.Generic import List
-from System.Diagnostics import Process, Stopwatch
+# from System.Diagnostics import Process, Stopwatch
 
 clr.AddReference('RevitAPI')
 import Autodesk
-from Autodesk.Revit.DB import SpatialElement, SpatialElementBoundaryLocation, SpatialElementBoundaryOptions, SpatialElementBoundarySubface, SpatialElementGeometryCalculator
+# from Autodesk.Revit.DB import SpatialElement, SpatialElementBoundaryLocation, SpatialElementBoundaryOptions, SpatialElementBoundarySubface, SpatialElementGeometryCalculator
 from Autodesk.Revit.DB import BuiltInParameter, BuiltInCategory, Color, DisplayUnitType, ElementId, Material, SetComparisonResult, UnitUtils, WallKind
 from Autodesk.Revit.DB import Curve, CurveLoop, GeometryCreationUtilities, Line, SolidOptions, SubfaceType, Transform, XYZ
 from Autodesk.Revit.DB import UV
 clr.AddReference('RevitAPIIFC')
 from Autodesk.Revit.DB.IFC import ExporterIFCUtils
 
-clr.AddReference("RevitNodes")
-import Revit
-clr.ImportExtensions(Revit.Elements)  # ToDSType не работает00 без
-clr.ImportExtensions(Revit.GeometryConversion)
+
 # from Revit.Elements import Elements
 
 
@@ -41,6 +38,12 @@ from RevitServices.Persistence import DocumentManager
 clr.AddReference('ProtoGeometry')
 from Autodesk.DesignScript.Geometry import BoundingBox, Surface
 from Autodesk.DesignScript.Geometry import Curve as DSCurve
+
+clr.AddReference("RevitNodes")
+import Revit
+clr.ImportExtensions(Revit.Elements)
+from Revit.Elements import Element as DSElement
+clr.ImportExtensions(Revit.GeometryConversion)
 # -----------------------Импоорт библиотек----------------------
 
 
@@ -63,28 +66,6 @@ class TimeCounter:
 		return self.time.Elapsed
 
 
-class RoomFinishing:
-	"""Main roomfinishing class for information collect."""
-
-	separator_list = []
-	by_face_list = []
-	inserts = []
-	curve_from_boundary_list = []
-	elem_list = []
-	inserts_by_wall = []
-	boundary_surf = []
-	boundary_curvs = []
-	boundary_ds_type = []
-	boundary_level = []
-
-	def __init__(self, current_doc, link_doc, room):
-		"""Main parameters for room finishing construction."""
-		self.current_doc = current_doc
-		self.link_doc = link_doc
-		self.room = room
-# -----------------------Класс для хранения информации
-
-
 # -----------------------Функции----------------------
 def wall_profil(face_host_id, current_doc, face):
 	"""Find wall profil."""
@@ -93,13 +74,19 @@ def wall_profil(face_host_id, current_doc, face):
 		return b_element.GetGeometryObjectFromReference(face.Reference)
 
 
-def main_face_filter(host_id, link_id, current_doc, link_doc):
+def main_face_filter(host_id, link_id, current_doc, link_doc, face, wall_type_names_to_exclude):
 	"""Filter to remove all what not needet."""
 	id_minus_one = ElementId(-1)
+	b_element, inserts_by_wall = None, []
 	if host_id != id_minus_one:
-		return is_not_curtain_modelline(host_id, current_doc)
+		if is_not_curtain_modelline(host_id, current_doc):
+			b_element = current_doc.GetElement(host_id)
+			inserts_by_wall = get_inserts_cuboid_from_wall(b_element, current_doc, current_doc, face, wall_type_names_to_exclude)
 	elif link_id != id_minus_one:
-		return is_not_curtain_modelline(link_id, link_doc)
+		if is_not_curtain_modelline(link_id, link_doc):
+			b_element = link_doc.GetElement(link_id)
+			inserts_by_wall = get_inserts_cuboid_from_wall(b_element, current_doc, link_doc, face, wall_type_names_to_exclude)
+	return b_element, inserts_by_wall
 
 
 def is_not_curtain_modelline(id, doc):
@@ -112,6 +99,37 @@ def is_not_curtain_modelline(id, doc):
 			return False
 		else:
 			return True
+
+
+def get_inserts_cuboid_from_wall(b_element, current_doc, _doc, face, wall_type_names_to_exclude):
+	"""Choosing wall destiny by ID."""
+	inserts_by_wall = []
+	if b_element.GetType().Name == "Wall":
+		wall_type = _doc.GetElement(b_element.GetTypeId())
+		type_name = wall_type.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString()
+		if type_name in wall_type_names_to_exclude:
+			pass
+		else:
+			inserts_id_list = b_element.FindInserts(incopenings, incshadows, incwalls, incshared)
+			if not inserts_id_list:
+				pass
+			else:
+				for insert_id in inserts_id_list:
+					item = _doc.GetElement(insert_id)
+					# x = BoundingBox.ToCuboid(DSElement.BoundingBox(UnwrapElement(item)))
+					if item.GetType().Name == "Opening":
+						pass
+					else:
+						item = _doc.GetElement(insert_id)
+					x = None
+					if item.GetType().Name == "FamilyInstance":
+						x = get_wall_cut(item, b_element, face)
+					elif item.GetType().Name == "Wall":
+						x = get_wall_profil(item, b_element, face)
+					else:
+						x = BoundingBox.ToCuboid(item.get_BoundingBox(current_doc.ActiveView).ToProtoType())
+					inserts_by_wall.append(x)
+	return inserts_by_wall
 
 
 def main_wall_by_id_work(face_host_id, current_doc, face, wall_type_names_to_exclude):
@@ -127,8 +145,6 @@ def main_wall_by_id_work(face_host_id, current_doc, face, wall_type_names_to_exc
 		type_name = wall_type.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString()
 		if type_name in wall_type_names_to_exclude:
 			pass
-		# elif wall_type.Kind == WallKind.Curtain:
-		# 	curtain_list.append(b_element)
 		else:
 			inserts_list = b_element.FindInserts(incopenings, incshadows, incwalls, incshared)
 			if not inserts_list:
