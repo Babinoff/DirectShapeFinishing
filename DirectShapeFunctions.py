@@ -18,8 +18,8 @@ from System.Collections.Generic import List
 clr.AddReference('RevitAPI')
 import Autodesk
 # from Autodesk.Revit.DB import SpatialElement, SpatialElementBoundaryLocation, SpatialElementBoundaryOptions, SpatialElementBoundarySubface, SpatialElementGeometryCalculator
-from Autodesk.Revit.DB import BuiltInParameter, BuiltInCategory, Color, DisplayUnitType, ElementId, Material, SetComparisonResult, UnitUtils, WallKind
-from Autodesk.Revit.DB import Curve, CurveLoop, GeometryCreationUtilities, Line, SolidOptions, SubfaceType, Transform, XYZ
+from Autodesk.Revit.DB import BuiltInParameter, BuiltInCategory, Color, DisplayUnitType, ElementId, FilteredElementCollector, Material, SetComparisonResult, UnitUtils, WallKind
+from Autodesk.Revit.DB import Curve, CurveLoop, ElementTransformUtils, GeometryCreationUtilities, Line, SolidOptions, SolidUtils, SubfaceType, Transform, XYZ
 from Autodesk.Revit.DB import UV
 clr.AddReference('RevitAPIIFC')
 from Autodesk.Revit.DB.IFC import ExporterIFCUtils
@@ -66,7 +66,70 @@ class TimeCounter:
 		return self.time.Elapsed
 
 
+class ElementTransformByLinkInstance():
+	link_instance_transform_total = None
+	transform_if_point_move = None
+	transform_on = False
+	transform_rotate_on = False
+	transform_rotate = 0
+	z_line = None
+	_doc = None
+
+	def __init__(self, doc, link_instance):
+		self._doc = doc
+		self.link_instance_transform_total = link_instance.GetTotalTransform()
+		# doc_project_bas_point_collector_ilist = FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_ProjectBasePoint).ToElements()
+		# if doc_project_bas_point_collector_ilist and len(doc_project_bas_point_collector_ilist) > 0:
+		# 	doc_project_bas_point = doc_project_bas_point_collector_ilist[0]
+		# 	link_instance_transform = link_instance.GetTransform()
+		# 	self.link_instance_transform_total = link_instance.GetTotalTransform()
+		# 	vector_x_of_instance = link_instance_transform.OfVector(link_instance_transform.BasisX)
+
+		# 	if (doc_project_bas_point.SharedPosition.DistanceTo(link_instance_transform.Origin) != 0):
+		# 		base_vector = link_instance_transform.Origin
+		# 		self.transform_if_point_move = base_vector
+		# 		self.transform_on = True
+		# 		self.z_line = Line.CreateBound(link_instance_transform.Origin, link_instance_transform.Origin + XYZ(0, 0, 1))
+		# 		self.transform_rotate = link_instance_transform.BasisX.AngleOnPlaneTo(vector_x_of_instance, link_instance_transform.BasisZ)
+		# 		if (self.transform_rotate != 0):
+		# 			self.transform_rotate_on = True
+
+	def transform_to_current_doc(self, inserts_solid_by_wall):
+		return [SolidUtils.CreateTransformed(new_geom, self.link_instance_transform_total) for new_geom in inserts_solid_by_wall]
+		# if (self.transform_on is True):
+
+		# 	# ElementTransformUtils.MoveElements(self._doc, new_elements_ids, self.transform_if_point_move)
+		# if (self.transform_rotate_on is True):
+		# 	# ElementTransformUtils.RotateElements(self._doc, new_elements_ids, self.z_line, self.transform_rotate)
+		# 	Geometry.Rotate(new_geom, )
+
+
 # -----------------------Функции----------------------
+def bbox_to_solid(bbox):
+	solid_opt = SolidOptions(ElementId.InvalidElementId, ElementId.InvalidElementId)
+
+	bottom_z_offset = 0.1
+	bbox.Min = XYZ(bbox.Min.X, bbox.Min.Y, bbox.Min.Z - bottom_z_offset)
+	b1 = XYZ(bbox.Min.X, bbox.Min.Y, bbox.Min.Z)
+	b2 = XYZ(bbox.Max.X, bbox.Min.Y, bbox.Min.Z)
+	b3 = XYZ(bbox.Max.X, bbox.Max.Y, bbox.Min.Z)
+	b4 = XYZ(bbox.Min.X, bbox.Max.Y, bbox.Min.Z)
+	bbox_height = bbox.Max.Z - bbox.Min.Z
+
+	lines = List[Curve]()
+	lines.Add(Line.CreateBound(b1, b2))
+	lines.Add(Line.CreateBound(b2, b3))
+	lines.Add(Line.CreateBound(b3, b4))
+	lines.Add(Line.CreateBound(b4, b1))
+	rectangle = [CurveLoop.Create(lines)]
+
+	extrusion = GeometryCreationUtilities.CreateExtrusionGeometry(List[CurveLoop](rectangle),
+																																XYZ.BasisZ,
+																																bbox_height,
+																																solid_opt)
+	return extrusion
+
+
 def wall_profil(face_host_id, current_doc, face):
 	"""Find wall profil."""
 	b_element = current_doc.GetElement(face_host_id)
@@ -74,19 +137,20 @@ def wall_profil(face_host_id, current_doc, face):
 		return b_element.GetGeometryObjectFromReference(face.Reference)
 
 
-def main_face_filter(host_id, link_id, current_doc, link_doc, face, wall_type_names_to_exclude):
+def main_face_filter(host_id, link_id, current_doc, link_doc, face, wall_type_names_to_exclude, transformer):
 	"""Filter to remove all what not needet."""
 	id_minus_one = ElementId(-1)
-	b_element, inserts_by_wall = None, []
+	b_element, inserts_solid_by_wall = None, []
 	if host_id != id_minus_one:
 		if is_not_curtain_modelline(host_id, current_doc):
 			b_element = current_doc.GetElement(host_id)
-			inserts_by_wall = get_inserts_cuboid_from_wall(b_element, current_doc, current_doc, face, wall_type_names_to_exclude)
+			inserts_solid_by_wall = get_inserts_solid_cuboid_from_wall(b_element, current_doc, current_doc, face, wall_type_names_to_exclude)
 	elif link_id != id_minus_one:
 		if is_not_curtain_modelline(link_id, link_doc):
 			b_element = link_doc.GetElement(link_id)
-			inserts_by_wall = get_inserts_cuboid_from_wall(b_element, current_doc, link_doc, face, wall_type_names_to_exclude)
-	return b_element, inserts_by_wall
+			inserts_solid_by_wall = get_inserts_solid_cuboid_from_wall(b_element, current_doc, link_doc, face, wall_type_names_to_exclude)
+			inserts_solid_by_wall = transformer.transform_to_current_doc(inserts_solid_by_wall)
+	return b_element, inserts_solid_by_wall
 
 
 def is_not_curtain_modelline(id, doc):
@@ -101,9 +165,9 @@ def is_not_curtain_modelline(id, doc):
 			return True
 
 
-def get_inserts_cuboid_from_wall(b_element, current_doc, _doc, face, wall_type_names_to_exclude):
+def get_inserts_solid_cuboid_from_wall(b_element, current_doc, _doc, face, wall_type_names_to_exclude):
 	"""Choosing wall destiny by ID."""
-	inserts_by_wall = []
+	inserts_solids_by_wall = []
 	if b_element.GetType().Name == "Wall":
 		wall_type = _doc.GetElement(b_element.GetTypeId())
 		type_name = wall_type.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString()
@@ -117,19 +181,20 @@ def get_inserts_cuboid_from_wall(b_element, current_doc, _doc, face, wall_type_n
 				for insert_id in inserts_id_list:
 					item = _doc.GetElement(insert_id)
 					# x = BoundingBox.ToCuboid(DSElement.BoundingBox(UnwrapElement(item)))
-					if item.GetType().Name == "Opening":
-						pass
-					else:
-						item = _doc.GetElement(insert_id)
-					x = None
+					# if item.GetType().Name == "Opening":
+					# 	pass
+					# else:
+					# item = _doc.GetElement(insert_id)
+					solid = None
 					if item.GetType().Name == "FamilyInstance":
-						x = get_wall_cut(item, b_element, face)
+						solid = get_wall_cut(current_doc, item, b_element, face)
 					elif item.GetType().Name == "Wall":
-						x = get_wall_profil(item, b_element, face)
+						solid = get_wall_profil(item, b_element, face)
 					else:
-						x = BoundingBox.ToCuboid(item.get_BoundingBox(current_doc.ActiveView).ToProtoType())
-					inserts_by_wall.append(x)
-	return inserts_by_wall
+						solid = bbox_to_solid(item.get_BoundingBox(current_doc.ActiveView))
+						# x = BoundingBox.ToCuboid(item.get_BoundingBox(current_doc.ActiveView).ToProtoType())
+					inserts_solids_by_wall.append(solid)
+	return inserts_solids_by_wall
 
 
 def main_wall_by_id_work(face_host_id, current_doc, face, wall_type_names_to_exclude):
@@ -166,15 +231,15 @@ def main_wall_by_id_work(face_host_id, current_doc, face, wall_type_names_to_exc
 	return inserts_by_wall
 
 
-def get_wall_cut(fi, wall, _face):
+def get_wall_cut(current_doc, item, wall, _face):
 	"""Get wall cunt."""
-	current_doc = fi.Document
+	_doc = item.Document
 	current_dir = StrongBox[XYZ](wall.Orientation)
 	try:
-		curve_loop1 = ExporterIFCUtils.GetInstanceCutoutFromWall(current_doc, wall, fi, current_dir)
+		curve_loop1 = ExporterIFCUtils.GetInstanceCutoutFromWall(_doc, wall, item, current_dir)
 		multpl = wall.Width
 		w_vector = wall.Orientation
-		f_vector = fi.FacingOrientation
+		f_vector = item.FacingOrientation
 		for c in curve_loop1:
 			test_curv = c
 		if _face.Intersect(test_curv) == SetComparisonResult.Subset:
@@ -192,10 +257,11 @@ def get_wall_cut(fi, wall, _face):
 		for cm in curv_move:
 			curve_loop2.Append(cm)
 		icurve_loop = List[CurveLoop]([curve_loop2])
-		geom = GeometryCreationUtilities.CreateExtrusionGeometry(icurve_loop, extr_vector, wall.Width * 2).ToProtoType()
+		geom = GeometryCreationUtilities.CreateExtrusionGeometry(icurve_loop, extr_vector, wall.Width * 2)#.ToProtoType()
 		return geom
 	except:
-		geom = BoundingBox.ToCuboid(fi.get_BoundingBox(current_doc.ActiveView).ToProtoType())
+		geom = bbox_to_solid(item.get_BoundingBox(current_doc.ActiveView))
+		# geom = BoundingBox.ToCuboid(item.get_BoundingBox(current_doc.ActiveView))#.ToProtoType())
 		return geom
 
 
@@ -213,7 +279,7 @@ def get_wall_profil(insert_wall, host_wall, face):
 			extr_vector = insert_wall.Orientation
 		else:
 			extr_vector = host_wall.Orientation
-		geom = GeometryCreationUtilities.CreateExtrusionGeometry(i_list_crv_loop, extr_vector, host_wall.Width).ToProtoType()
+		geom = GeometryCreationUtilities.CreateExtrusionGeometry(i_list_crv_loop, extr_vector, host_wall.Width)#.ToProtoType()
 		return geom
 
 
