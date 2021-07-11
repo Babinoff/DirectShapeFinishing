@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # -----------------------Импоорт библиотек----------------------
 import clr
-from random import randint
-# import random
+# from random import randint
+# # import random
 import sys
 sys.path.append("C:\\Program Files (x86)\\IronPython 2.7\\Lib")
 sys.path.append("C:\\git\\DirectShapeFinishing")
@@ -15,10 +15,10 @@ clr.AddReference("RevitServices")
 clr.AddReference('ProtoGeometry')
 
 # import DirectShapeFunctions
-from DirectShapeFunctions import ElementTransformByLinkInstance, main_face_filter, TimeCounter
-from DirectShapeFunctions import boundary_filter, dublicate_separate_filter
-from DirectShapeFunctions import create_material, is_not_curtain_modelline, main_wall_by_id_work
-from DirectShapeFunctions import get_wall_cut, get_wall_p_curve, get_wall_profil, get_wall_ds_type_material, get_wall_type_name, get_type_if_null_id
+from DirectShapeFunctions import SolidTransformByLinkInstance, TimeCounter
+from DirectShapeFunctions import main_face_filter, dublicate_separate_filter
+from DirectShapeFunctions import create_material
+from DirectShapeFunctions import get_wall_ds_type_material
 
 from RevitServices.Persistence import DocumentManager
 from RevitServices.Transactions import TransactionManager
@@ -70,12 +70,12 @@ boundary_by_room_level = []
 r_f_list = []
 wall_type_mat_names_all = []
 
-#OUT = link_doc, rvt_instance_element
-#"""
+# OUT = link_doc, rvt_instance_element
+# """
 test_room_faces = []
 
 id_minus_one = ElementId(-1)
-transformer = ElementTransformByLinkInstance(current_doc, rvt_instance_element)
+transformer = SolidTransformByLinkInstance(current_doc, rvt_instance_element)
 
 move_z = UnitUtils.ConvertToInternalUnits(move_z_value, DisplayUnitType.DUT_MILLIMETERS)  # noqa
 transform_Z = Transform.CreateTranslation(XYZ(0, 0, move_z))
@@ -130,5 +130,5 @@ time_rooms = timer_rooms.stop()
 
 TransactionManager.Instance.ForceCloseTransaction()
 
-OUT = time_rooms, surface_list_all, wall_type_mat_names_all#, test_room_faces
-#"""
+OUT = time_rooms, surface_list_all, wall_type_mat_names_all
+# """
