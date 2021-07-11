@@ -50,24 +50,24 @@ s_options = SolidOptions(ElementId(-1), ElementId(-1))
 # -----------------------Рабочие параметры----------------------
 rooms = UnwrapElement(IN[0])  # noqa
 link_doc, rvt_instance_element = IN[1][0][0], IN[1][2][0]  # noqa
-room_height_enable = IN[2]  # noqa
-custom_hight = IN[3]  # noqa
-transform_Z_enable = IN[4]  # noqa
-move_z_value = IN[5]  # noqa
+# room_height_enable = IN[2]  # noqa
+# custom_hight = IN[3]  # noqa
+# transform_Z_enable = IN[4]  # noqa
+# move_z_value = IN[5]  # noqa
 wall_type_names_to_exclude = IN[6]  # noqa
-surf_by_room = []
-element_by_room = []
-full_id_list = []
-curtain_list = []
-insertslist = []
-surface_in_room = []
+# surf_by_room = []
+# element_by_room = []
+# full_id_list = []
+# curtain_list = []
+# insertslist = []
+# surface_in_room = []
 surface_list_all = []
-surf_from_bound_curvs = []
-boundarylist = []
-blist = []
-boundary_ds_type_by_room = []
-boundary_by_room_level = []
-r_f_list = []
+# surf_from_bound_curvs = []
+# boundarylist = []
+# blist = []
+# boundary_ds_type_by_room = []
+# boundary_by_room_level = []
+# r_f_list = []
 wall_type_mat_names_all = []
 
 # OUT = link_doc, rvt_instance_element
@@ -77,12 +77,12 @@ test_room_faces = []
 id_minus_one = ElementId(-1)
 transformer = SolidTransformByLinkInstance(current_doc, rvt_instance_element)
 
-move_z = UnitUtils.ConvertToInternalUnits(move_z_value, DisplayUnitType.DUT_MILLIMETERS)  # noqa
-transform_Z = Transform.CreateTranslation(XYZ(0, 0, move_z))
+# move_z = UnitUtils.ConvertToInternalUnits(move_z_value, DisplayUnitType.DUT_MILLIMETERS)  # noqa
+# transform_Z = Transform.CreateTranslation(XYZ(0, 0, move_z))
 
 TransactionManager.Instance.EnsureInTransaction(current_doc)
-ds_type = "Finishing_BASE"
-create_material(current_doc, ds_type)
+ds_type_material = "Finishing_BASE"
+create_material(current_doc, ds_type_material)
 # @@@-----------------------Room params----------------------
 timer_rooms = TimeCounter()
 for room in rooms:
@@ -99,7 +99,6 @@ for room in rooms:
 		by_face_list = []
 		wall_type_mat_names = []
 		for face in sp_geom_results.GetGeometry().Faces:
-			ds_type = "Finishing_BASE"
 			bface = sp_geom_results.GetBoundaryFaceInfo(face)[0]
 			if str(bface.SubfaceType) is str(SubfaceType.Side) and dublicate_separate_filter(by_face_list, face):
 				sbe_id = bface.SpatialBoundaryElement
@@ -108,27 +107,29 @@ for room in rooms:
 				link_inst_id = sbe_id.LinkInstanceId
 				if host_id == id_minus_one and link_id == id_minus_one:
 					by_face_list.append(face)
-					wall_type_mat_names.append(ds_type)
+					# wall_type_mat_names.append(ds_type_material)
 				else:
-					b_element, inserts_solid_by_wall = main_face_filter(host_id, link_id, current_doc, link_doc, face, wall_type_names_to_exclude, transformer)
+					b_element, inserts_solid_by_wall, ds_type_material = main_face_filter(room, host_id, link_id, current_doc, link_doc, face, wall_type_names_to_exclude, transformer)
 					if b_element:
-						ds_type = get_wall_ds_type_material(current_doc, b_element, room)
-						wall_type_mat_names.append(ds_type)
+						create_material(current_doc, ds_type_material)
+						wall_type_mat_names.append(ds_type_material)
 						new_bs = face.ToProtoType()[0]
+						test_inserts_solid = []
 						for ins in inserts_solid_by_wall:
 							ins = ins.ToProtoType()
+							test_inserts_solid.append(ins)
 							if ins and new_bs.DoesIntersect(ins):
 								new_bs = new_bs.SubtractFrom(ins)[0]  # -------------------ВЫРЕЗАЕТ ИЗ ПЛОСКОСТИ СТЕНЫ ЕСЛИ ДВЕРЬ ПРИМЫКАЕТ К НЕЙ ТОРЦОМ, ИСПРАВИТЬ -------------------
 								# -------------------нужен метот для получения плоскости стены с изминёным профилем
 						surface_in_room.append(new_bs)
 					if link_id != id_minus_one:
-						test_faces.append((host_id, link_id, b_element, inserts_solid_by_wall))
+						test_faces.append((ds_type_material, host_id, link_id, b_element, test_inserts_solid))
 		surface_list_all.append(surface_in_room)
-		test_room_faces.append(test_faces)
 		wall_type_mat_names_all.append(wall_type_mat_names)
+		test_room_faces.append(test_faces)
 time_rooms = timer_rooms.stop()
 
 TransactionManager.Instance.ForceCloseTransaction()
 
-OUT = time_rooms, surface_list_all, wall_type_mat_names_all
+OUT = time_rooms, surface_list_all, wall_type_mat_names_all  #, test_room_faces
 # """
