@@ -14,8 +14,8 @@ clr.AddReference("RevitServices")
 clr.AddReference('ProtoGeometry')
 
 # import DirectShapeFunctions
-from DShapeFinishingLib import SolidTransformByLinkInstance, TimeCounter
-from DShapeFinishingLib import main_face_filter, dublicate_separate_filter, create_material
+from DShapeLib import SolidTransformByLinkInstance, TimeCounter
+from DShapeLib import main_face_filter, dublicate_separate_filter, create_material
 
 from RevitServices.Persistence import DocumentManager
 from RevitServices.Transactions import TransactionManager
@@ -101,7 +101,7 @@ for room in rooms:
 						except Exception as e:
 							tb2 = sys.exc_info()[2]
 							line = tb2.tb_lineno
-							fail_face.append((face, "{0} Has failure {1}".format(str(line), str(e))))
+							fail_face.append((room, face, "{0} Has failure {1}".format(str(line), str(e))))
 						test_faces.append((ds_type_material, host_id, link_id, b_element, test_inserts_solid))
 		surface_list_all.append(surface_in_room)
 		wall_type_mat_names_all.append(wall_type_mat_names)
