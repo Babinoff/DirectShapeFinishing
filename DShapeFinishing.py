@@ -54,6 +54,7 @@ wall_type_mat_names_all = []
 # OUT = link_doc, rvt_instance_element
 # """
 test_room_faces = []
+fail_face = []
 
 id_minus_one = ElementId(-1)
 transformer = SolidTransformByLinkInstance(rvt_instance_element)
@@ -70,10 +71,10 @@ for room in rooms:
 	if room_volume > 0:
 		surface_in_room = []
 		sp_geom_results = calculator.CalculateSpatialElementGeometry(room)
-		inserts_solid_by_wall = []
 		by_face_list = []
 		wall_type_mat_names = []
 		for face in sp_geom_results.GetGeometry().Faces:
+			inserts_solid_by_wall = []
 			bface = sp_geom_results.GetBoundaryFaceInfo(face)[0]
 			if str(bface.SubfaceType) is str(SubfaceType.Side) and dublicate_separate_filter(by_face_list, face):
 				sbe_id = bface.SpatialBoundaryElement
@@ -87,15 +88,20 @@ for room in rooms:
 					if b_element:
 						create_material(current_doc, ds_type_material)
 						wall_type_mat_names.append(ds_type_material)
-						new_bs = face.ToProtoType()[0]
-						test_inserts_solid = []
-						for ins in inserts_solid_by_wall:
-							ins = ins.ToProtoType()
-							test_inserts_solid.append(ins)
-							if ins and new_bs.DoesIntersect(ins):
-								new_bs = new_bs.SubtractFrom(ins)[0]
-						surface_in_room.append(new_bs)
-					if link_id != id_minus_one:
+						try:
+							new_bs = face.ToProtoType()[0]
+							test_inserts_solid = []
+							for ins in inserts_solid_by_wall:
+								if ins:
+									ins = ins.ToProtoType()
+									test_inserts_solid.append(ins)
+									if ins and new_bs.DoesIntersect(ins):
+										new_bs = new_bs.SubtractFrom(ins)[0]
+							surface_in_room.append(new_bs)
+						except Exception as e:
+							tb2 = sys.exc_info()[2]
+							line = tb2.tb_lineno
+							fail_face.append((face, "{0} Has failure {1}".format(str(line), str(e))))
 						test_faces.append((ds_type_material, host_id, link_id, b_element, test_inserts_solid))
 		surface_list_all.append(surface_in_room)
 		wall_type_mat_names_all.append(wall_type_mat_names)
@@ -104,5 +110,5 @@ time_rooms = timer_rooms.stop()
 
 TransactionManager.Instance.ForceCloseTransaction()
 
-OUT = time_rooms, surface_list_all, wall_type_mat_names_all  #, test_room_faces
+OUT = time_rooms, fail_face, surface_list_all, wall_type_mat_names_all  #, test_room_faces
 # """

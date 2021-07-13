@@ -49,10 +49,12 @@ class SolidTransformByLinkInstance():
 	link_instance_transform_total = None
 
 	def __init__(self, link_instance):
-		self.link_instance_transform_total = link_instance.GetTotalTransform()
+		if link_instance:
+			self.link_instance_transform_total = link_instance.GetTotalTransform()
 
 	def transform_to_current_doc(self, inserts_solid_by_wall):
-		return [SolidUtils.CreateTransformed(new_geom, self.link_instance_transform_total) for new_geom in inserts_solid_by_wall]
+		if self.link_instance_transform_total:
+			return [SolidUtils.CreateTransformed(new_geom, self.link_instance_transform_total) for new_geom in inserts_solid_by_wall]
 # -----------------------Классы
 
 
@@ -105,16 +107,19 @@ def this_is_not_element_your_looking_for(id, doc, wall_type_names_to_exclude):
 	"""Wall is curtain test."""
 	wall = doc.GetElement(id)
 	wall_type = doc.GetElement(wall.GetTypeId())
-	type_name = wall_type.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString()
-	if wall and wall.GetType().Name != "DirectShape":
-		if wall.GetType().Name == "Wall" and wall.WallType.Kind == WallKind.Curtain:
-			return False
-		elif wall.GetType().Name == "ModelLine":
-			return False
-		elif type_name in wall_type_names_to_exclude:
-			return False
-		else:
-			return True
+	if wall_type:
+		type_name = wall_type.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_NAME).AsString()
+		if wall and wall.GetType().Name != "DirectShape":
+			if wall.GetType().Name == "Wall" and wall.WallType.Kind == WallKind.Curtain:
+				return False
+			elif wall.GetType().Name == "ModelLine":
+				return False
+			elif type_name in wall_type_names_to_exclude:
+				return False
+			else:
+				return True
+	else:
+		return False
 
 
 def get_wall_ds_type_material(current_doc, b_element, room, list_of_concrete_mat_prfx):
@@ -146,9 +151,11 @@ def get_inserts_solid_cuboid_from_wall(b_element, current_doc, _doc, face):
 		else:
 			for insert_id in inserts_id_list:
 				item = _doc.GetElement(insert_id)
+				# host_id = item.Host.Id.IntegerValue
 				solid = None
 				if item.GetType().Name == "FamilyInstance":
-					solid = get_wall_cut(current_doc, item, b_element, face)
+					if b_element.Id.IntegerValue == item.Host.Id.IntegerValue:
+						solid = get_wall_cut(current_doc, item, b_element, face)
 				elif item.GetType().Name == "Wall":
 					solid = get_wall_profil(item, b_element, face)
 				else:
