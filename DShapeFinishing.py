@@ -15,7 +15,7 @@ from RevitServices.Transactions import TransactionManager
 
 import Revit
 clr.ImportExtensions(Revit.GeometryConversion)
-from Autodesk.Revit.DB import SolidOptions, SubfaceType, Transform, XYZ
+from Autodesk.Revit.DB import SubfaceType
 from Autodesk.Revit.DB import BuiltInParameter, ElementId
 from Autodesk.Revit.DB import SpatialElementBoundaryLocation, SpatialElementBoundaryOptions, SpatialElementGeometryCalculator
 # -----------------------Импоорт библиотек----------------------
@@ -55,26 +55,26 @@ for room in rooms:
 	room_volume = room.get_Parameter(BuiltInParameter.ROOM_VOLUME).AsDouble()
 	if room_volume > 0:
 		surface_in_room = []
-		sp_geom_results = calculator.CalculateSpatialElementGeometry(room)
 		by_face_list = []
 		wall_type_mat_names = []
+		sp_geom_results = calculator.CalculateSpatialElementGeometry(room)
 		for face in sp_geom_results.GetGeometry().Faces:
-			inserts_solid_by_wall = []
-			bface = sp_geom_results.GetBoundaryFaceInfo(face)[0]
-			if str(bface.SubfaceType) is str(SubfaceType.Side) and dublicate_separate_filter(by_face_list, face):
-				sbe_id = bface.SpatialBoundaryElement
-				host_id = sbe_id.HostElementId
-				link_id = sbe_id.LinkedElementId
-				link_inst_id = sbe_id.LinkInstanceId
-				if host_id == id_minus_one and link_id == id_minus_one:
-					by_face_list.append(face)
-				else:
-					b_element, inserts_solid_by_wall, ds_type_material = main_face_filter(list_of_concrete_mat_prfx, room, host_id, link_id, current_doc, link_doc, face, wall_type_names_to_exclude, transformer)
-					if b_element:
-						create_material(current_doc, ds_type_material)
-						wall_type_mat_names.append(ds_type_material)
-						test_inserts_solid = []
-						try:  # необходим поскольку конвертация .ToProtoType() может быть не успешной, если face очень маленький, или имеет форму не допустимую в Динамо
+			try:  # необходим поскольку конвертация .ToProtoType() может быть не успешной, если face очень маленький, или имеет форму не допустимую в Динамо
+				inserts_solid_by_wall = []
+				bface = sp_geom_results.GetBoundaryFaceInfo(face)[0]
+				if str(bface.SubfaceType) is str(SubfaceType.Side) and dublicate_separate_filter(by_face_list, face):
+					sbe_id = bface.SpatialBoundaryElement
+					host_id = sbe_id.HostElementId
+					link_id = sbe_id.LinkedElementId
+					link_inst_id = sbe_id.LinkInstanceId
+					if host_id == id_minus_one and link_id == id_minus_one:
+						by_face_list.append(face)
+					else:
+						b_element, inserts_solid_by_wall, ds_type_material = main_face_filter(list_of_concrete_mat_prfx, room, host_id, link_id, current_doc, link_doc, face, wall_type_names_to_exclude, transformer)
+						if b_element:
+							create_material(current_doc, ds_type_material)
+							wall_type_mat_names.append(ds_type_material)
+							test_inserts_solid = []
 							new_bs = face.ToProtoType()[0]
 							for ins in inserts_solid_by_wall:
 								if ins:
@@ -83,11 +83,11 @@ for room in rooms:
 									if ins and new_bs.DoesIntersect(ins):
 										new_bs = new_bs.SubtractFrom(ins)[0]
 							surface_in_room.append(new_bs)
-						except Exception as e:
-							tb2 = sys.exc_info()[2]
-							line = tb2.tb_lineno
-							fail_face.append((room, face, "{0} Has failure {1}".format(str(line), str(e))))
-						test_faces.append((ds_type_material, host_id, link_id, b_element, test_inserts_solid))
+							test_faces.append((ds_type_material, host_id, link_id, b_element, test_inserts_solid))
+			except Exception as e:
+				tb2 = sys.exc_info()[2]
+				line = tb2.tb_lineno
+				fail_face.append((room, face, "{0} Has failure {1}".format(str(line), str(e))))
 		surface_list_all.append(surface_in_room)
 		wall_type_mat_names_all.append(wall_type_mat_names)
 		test_room_faces.append(test_faces)

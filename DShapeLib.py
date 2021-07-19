@@ -5,16 +5,10 @@ from clr import StrongBox
 import sys
 sys.path.append("C:\\Program Files (x86)\\IronPython 2.7\\Lib")
 
-clr.AddReference('System')
 clr.AddReference('RevitAPI')
 clr.AddReference('RevitAPIIFC')
 clr.AddReference("RevitServices")
-clr.AddReference('ProtoGeometry')
 clr.AddReference("RevitNodes")
-
-import Revit
-clr.ImportExtensions(Revit.Elements)
-clr.ImportExtensions(Revit.GeometryConversion)
 
 from Autodesk.Revit.DB.IFC import ExporterIFCUtils
 from Autodesk.Revit.DB import UV
